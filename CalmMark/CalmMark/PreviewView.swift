@@ -84,10 +84,17 @@ struct WebViewWrapper: NSViewRepresentable {
 
         let config = WKWebViewConfiguration()
 
-        // Disable hardware acceleration to avoid Metal shader issues
+        // CRITICAL: Disable all GPU/Metal rendering to avoid crashes
         config.preferences.setValue(false, forKey: "acceleratedDrawingEnabled")
         config.preferences.setValue(false, forKey: "canvasUsesAcceleratedDrawing")
         config.preferences.setValue(false, forKey: "webGLEnabled")
+
+        // Try to disable GPU process completely (private API)
+        config.setValue(false, forKey: "drawsBackground")
+
+        // Disable media capabilities that might trigger GPU
+        config.allowsInlineMediaPlayback = false
+        config.mediaTypesRequiringUserActionForPlayback = .all
 
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
@@ -95,16 +102,19 @@ struct WebViewWrapper: NSViewRepresentable {
         // Set user agent
         config.applicationNameForUserAgent = "CalmMark"
 
+        // Create webView
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
 
-        // Disable hardware acceleration at WebView level too
-        webView.setValue(false, forKey: "drawsBackground")
+        // Try to disable background drawing at view level
+        if webView.responds(to: Selector(("_setDrawsBackground:"))) {
+            webView.setValue(false, forKey: "_drawsBackground")
+        }
 
-        // Don't allow magnification to avoid complex rendering
+        // Don't allow magnification
         webView.allowsMagnification = false
 
-        LogManager.shared.log(.success, "WKWebView creado correctamente (hardware acceleration disabled)", context: "WebView")
+        LogManager.shared.log(.success, "WKWebView creado correctamente (GPU disabled)", context: "WebView")
 
         // Store reference
         DispatchQueue.main.async {
