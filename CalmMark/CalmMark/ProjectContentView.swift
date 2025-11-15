@@ -56,91 +56,93 @@ struct ProjectContentView: View {
             }
 
             // Main content area with native NSSplitView for Xcode-level performance
-            VSplitView2(bottomHeight: $logPanelHeight) {
-                // Top: Horizontal split (Sidebar + Editor + Preview)
-                HSplitView3(
-                    leadingWidth: $sidebarWidth,
-                    trailingWidth: $previewPanelWidth
-                ) {
-                    // Leading: Sidebar (optional)
-                    if showSidebar {
-                        FileNavigatorView(
-                            fileManager: fileManager,
-                            openFiles: $tabManager.openFiles,
-                            activeFile: $tabManager.activeFile
-                        )
-                    } else {
-                        nil as EmptyView?
-                    }
-                } center: {
-                    // Center: Editor (always visible)
-                    if let activeFile = tabManager.activeFile {
-                        EditorView(text: Binding(
-                            get: { activeFile.content },
-                            set: { newValue in
-                                activeFile.content = newValue
-                                activeFile.isDirty = true
+            GeometryReader { geometry in
+                VSplitView2(bottomHeight: $logPanelHeight) {
+                    // Top: Horizontal split (Sidebar + Editor + Preview)
+                    HSplitView3(
+                        leadingWidth: $sidebarWidth,
+                        trailingWidth: $previewPanelWidth
+                    ) {
+                        // Leading: Sidebar (optional)
+                        Group {
+                            if showSidebar {
+                                FileNavigatorView(
+                                    fileManager: fileManager,
+                                    openFiles: $tabManager.openFiles,
+                                    activeFile: $tabManager.activeFile
+                                )
                             }
-                        ), settings: settings)
-                    } else {
-                        WelcomeView(
-                            fileManager: fileManager,
-                            onOpenFolder: {
-                                fileManager.openFolder()
-                            },
-                            onCreateCommand: {
-                                showCommandTemplates = true
-                            }
-                        )
-                    }
-                } trailing: {
-                    // Trailing: Preview (optional)
-                    if showPreviewPanel, let activeFile = tabManager.activeFile {
-                        VStack(spacing: 0) {
-                            // Header del panel de preview
-                            HStack {
-                                Image(systemName: "doc.richtext")
-                                    .font(.system(size: 12))
-                                Text("Preview")
-                                    .font(.system(size: 12, weight: .semibold))
-
-                                Text("(\(activeFile.content.count) chars)")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-
-                                Spacer()
-                                Button(action: {
-                                    withAnimation {
-                                        showPreviewPanel = false
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color(NSColor.controlBackgroundColor))
-
-                            Divider()
-
-                            PreviewView(markdown: activeFile.content, settings: settings)
-                                .onAppear {
-                                    LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
-                                }
                         }
-                    } else {
-                        nil as EmptyView?
+                    } center: {
+                        // Center: Editor (always visible)
+                        if let activeFile = tabManager.activeFile {
+                            EditorView(text: Binding(
+                                get: { activeFile.content },
+                                set: { newValue in
+                                    activeFile.content = newValue
+                                    activeFile.isDirty = true
+                                }
+                            ), settings: settings)
+                        } else {
+                            WelcomeView(
+                                fileManager: fileManager,
+                                onOpenFolder: {
+                                    fileManager.openFolder()
+                                },
+                                onCreateCommand: {
+                                    showCommandTemplates = true
+                                }
+                            )
+                        }
+                    } trailing: {
+                        // Trailing: Preview (optional)
+                        Group {
+                            if showPreviewPanel, let activeFile = tabManager.activeFile {
+                                VStack(spacing: 0) {
+                                    // Header del panel de preview
+                                    HStack {
+                                        Image(systemName: "doc.richtext")
+                                            .font(.system(size: 12))
+                                        Text("Preview")
+                                            .font(.system(size: 12, weight: .semibold))
+
+                                        Text("(\(activeFile.content.count) chars)")
+                                            .font(.system(size: 10))
+                                            .foregroundColor(.secondary)
+
+                                        Spacer()
+                                        Button(action: {
+                                            withAnimation {
+                                                showPreviewPanel = false
+                                            }
+                                        }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(NSColor.controlBackgroundColor))
+
+                                    Divider()
+
+                                    PreviewView(markdown: activeFile.content, settings: settings)
+                                        .onAppear {
+                                            LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
+                                        }
+                                }
+                            }
+                        }
                     }
-                }
-            } bottom: {
-                // Bottom: Log panel (optional)
-                if showLogPanel {
-                    LogPanelView()
-                } else {
-                    nil as EmptyView?
+                } bottom: {
+                    // Bottom: Log panel (optional)
+                    Group {
+                        if showLogPanel {
+                            LogPanelView()
+                        }
+                    }
                 }
             }
         }

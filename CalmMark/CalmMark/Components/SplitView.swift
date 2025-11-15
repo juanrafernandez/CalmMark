@@ -129,31 +129,37 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         splitView.dividerStyle = .thin
         splitView.delegate = context.coordinator
 
+        // Store references to hosting controllers to prevent deallocation
+        var controllers: [NSHostingController<AnyView>] = []
+
         // Add leading pane if exists
         if let leading = leading {
-            let hostingView = NSHostingController(rootView: leading).view
-            hostingView.widthAnchor.constraint(greaterThanOrEqualToConstant: leadingWidth).isActive = true
-            splitView.addArrangedSubview(hostingView)
+            let controller = NSHostingController(rootView: AnyView(leading))
+            controllers.append(controller)
+            let view = controller.view
+            view.translatesAutoresizingMaskIntoConstraints = false
+            splitView.addArrangedSubview(view)
         }
 
         // Add center pane (always exists)
-        let centerView = NSHostingController(rootView: center).view
+        let centerController = NSHostingController(rootView: AnyView(center))
+        controllers.append(centerController)
+        let centerView = centerController.view
+        centerView.translatesAutoresizingMaskIntoConstraints = false
         centerView.setContentHuggingPriority(.defaultLow, for: .horizontal)
         splitView.addArrangedSubview(centerView)
 
         // Add trailing pane if exists
         if let trailing = trailing {
-            let hostingView = NSHostingController(rootView: trailing).view
-            hostingView.widthAnchor.constraint(greaterThanOrEqualToConstant: trailingWidth).isActive = true
-            splitView.addArrangedSubview(hostingView)
+            let controller = NSHostingController(rootView: AnyView(trailing))
+            controllers.append(controller)
+            let view = controller.view
+            view.translatesAutoresizingMaskIntoConstraints = false
+            splitView.addArrangedSubview(view)
         }
 
-        // Set initial positions
-        splitView.setPosition(leadingWidth, ofDividerAt: 0)
-        if trailing != nil && splitView.arrangedSubviews.count > 2 {
-            let totalWidth = splitView.bounds.width
-            splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: splitView.arrangedSubviews.count - 2)
-        }
+        // Store controllers in coordinator to prevent deallocation
+        context.coordinator.hostingControllers = controllers
 
         return splitView
     }
@@ -171,6 +177,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var leadingWidth: CGFloat
         @Binding var trailingWidth: CGFloat
+        var hostingControllers: [NSHostingController<AnyView>] = []
 
         init(leadingWidth: Binding<CGFloat>, trailingWidth: Binding<CGFloat>) {
             self._leadingWidth = leadingWidth
@@ -205,9 +212,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
             if splitView.arrangedSubviews.count > 0 {
                 let newLeadingWidth = splitView.arrangedSubviews[0].frame.width
                 if abs(newLeadingWidth - leadingWidth) > 1 {
-                    DispatchQueue.main.async {
-                        self.leadingWidth = newLeadingWidth
-                    }
+                    leadingWidth = newLeadingWidth
                 }
             }
 
@@ -215,9 +220,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
             if splitView.arrangedSubviews.count > 2 {
                 let newTrailingWidth = splitView.arrangedSubviews.last!.frame.width
                 if abs(newTrailingWidth - trailingWidth) > 1 {
-                    DispatchQueue.main.async {
-                        self.trailingWidth = newTrailingWidth
-                    }
+                    trailingWidth = newTrailingWidth
                 }
             }
         }
@@ -247,21 +250,26 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         splitView.dividerStyle = .thin
         splitView.delegate = context.coordinator
 
+        var controllers: [NSHostingController<AnyView>] = []
+
         // Add top pane
-        let topView = NSHostingController(rootView: top).view
+        let topController = NSHostingController(rootView: AnyView(top))
+        controllers.append(topController)
+        let topView = topController.view
+        topView.translatesAutoresizingMaskIntoConstraints = false
         topView.setContentHuggingPriority(.defaultLow, for: .vertical)
         splitView.addArrangedSubview(topView)
 
         // Add bottom pane if exists
         if let bottom = bottom {
-            let bottomView = NSHostingController(rootView: bottom).view
-            bottomView.heightAnchor.constraint(greaterThanOrEqualToConstant: bottomHeight).isActive = true
+            let bottomController = NSHostingController(rootView: AnyView(bottom))
+            controllers.append(bottomController)
+            let bottomView = bottomController.view
+            bottomView.translatesAutoresizingMaskIntoConstraints = false
             splitView.addArrangedSubview(bottomView)
-
-            // Set initial position
-            let totalHeight = splitView.bounds.height
-            splitView.setPosition(totalHeight - bottomHeight, ofDividerAt: 0)
         }
+
+        context.coordinator.hostingControllers = controllers
 
         return splitView
     }
@@ -281,6 +289,7 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
 
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var bottomHeight: CGFloat
+        var hostingControllers: [NSHostingController<AnyView>] = []
 
         init(bottomHeight: Binding<CGFloat>) {
             self._bottomHeight = bottomHeight
@@ -308,9 +317,7 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
             if splitView.arrangedSubviews.count > 1 {
                 let newBottomHeight = splitView.arrangedSubviews.last!.frame.height
                 if abs(newBottomHeight - bottomHeight) > 1 {
-                    DispatchQueue.main.async {
-                        self.bottomHeight = newBottomHeight
-                    }
+                    bottomHeight = newBottomHeight
                 }
             }
         }
