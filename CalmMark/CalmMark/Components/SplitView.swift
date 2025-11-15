@@ -37,9 +37,7 @@ struct SplitView<Content: View>: NSViewRepresentable {
         let hostingController = NSHostingController(rootView: content)
 
         // Add the hosting view as a subview
-        if let view = hostingController.view {
-            splitView.addArrangedSubview(view)
-        }
+        splitView.addArrangedSubview(hostingController.view)
 
         return splitView
     }
