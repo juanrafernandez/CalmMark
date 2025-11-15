@@ -73,7 +73,8 @@ struct ProjectContentView: View {
                                 orientation: .vertical,
                                 offset: $sidebarWidth,
                                 minOffset: 150,
-                                maxOffset: min(500, geometry.size.width * 0.4)
+                                maxOffset: min(500, geometry.size.width * 0.4),
+                                invertDirection: false  // Leading panel: drag right = increase
                             )
                         }
 
@@ -105,7 +106,8 @@ struct ProjectContentView: View {
                                 orientation: .vertical,
                                 offset: $previewPanelWidth,
                                 minOffset: 200,
-                                maxOffset: min(800, geometry.size.width * 0.5)
+                                maxOffset: min(800, geometry.size.width * 0.5),
+                                invertDirection: true  // Trailing panel: drag left = increase
                             )
 
                             VStack(spacing: 0) {
@@ -153,7 +155,8 @@ struct ProjectContentView: View {
                             orientation: .horizontal,
                             offset: $logPanelHeight,
                             minOffset: 100,
-                            maxOffset: min(600, geometry.size.height * 0.6)
+                            maxOffset: min(600, geometry.size.height * 0.6),
+                            invertDirection: true  // Bottom panel: drag up = increase
                         )
 
                         LogPanelView()

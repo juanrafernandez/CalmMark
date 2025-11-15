@@ -14,6 +14,7 @@ struct DragDivider: View {
     @Binding var offset: CGFloat
     let minOffset: CGFloat
     let maxOffset: CGFloat
+    let invertDirection: Bool  // If true, inverts drag direction (for trailing/bottom panels)
 
     @State private var isDragging = false
     @State private var dragStartOffset: CGFloat = 0
@@ -21,6 +22,21 @@ struct DragDivider: View {
     enum Orientation {
         case horizontal  // For vertical resizing (top/bottom panels)
         case vertical    // For horizontal resizing (left/right panels)
+    }
+
+    // Default initializer with invertDirection = false
+    init(
+        orientation: Orientation,
+        offset: Binding<CGFloat>,
+        minOffset: CGFloat,
+        maxOffset: CGFloat,
+        invertDirection: Bool = false
+    ) {
+        self.orientation = orientation
+        self._offset = offset
+        self.minOffset = minOffset
+        self.maxOffset = maxOffset
+        self.invertDirection = invertDirection
     }
 
     var body: some View {
@@ -64,7 +80,9 @@ struct DragDivider: View {
                             }
 
                             let translation = orientation == .vertical ? value.translation.width : value.translation.height
-                            var newOffset = dragStartOffset + translation
+                            // Invert direction for trailing/bottom panels
+                            let adjustedTranslation = invertDirection ? -translation : translation
+                            var newOffset = dragStartOffset + adjustedTranslation
 
                             // Clamp to min/max
                             newOffset = max(minOffset, min(maxOffset, newOffset))
