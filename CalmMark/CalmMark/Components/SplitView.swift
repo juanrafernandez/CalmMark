@@ -109,6 +109,9 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     let showLeading: Bool
     let showTrailing: Bool
 
+    // CRITICAL: This key changes when content changes, forcing updateNSView to be called
+    let contentKey: String
+
     @Binding var leadingWidth: CGFloat
     @Binding var trailingWidth: CGFloat
 
@@ -117,6 +120,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         trailingWidth: Binding<CGFloat>,
         showLeading: Bool = true,
         showTrailing: Bool = true,
+        contentKey: String = "",
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder center: () -> Center,
         @ViewBuilder trailing: () -> Trailing
@@ -125,6 +129,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         self._trailingWidth = trailingWidth
         self.showLeading = showLeading
         self.showTrailing = showTrailing
+        self.contentKey = contentKey
         self.leading = leading()
         self.center = center()
         self.trailing = trailing()
@@ -196,7 +201,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         // Update visibility of panels using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 3 else { return }
 
-        print("🔄 [HSplitView3] updateNSView - showLeading: \(showLeading), showTrailing: \(showTrailing)")
+        print("🔄 [HSplitView3] updateNSView - showLeading: \(showLeading), showTrailing: \(showTrailing), contentKey: \(contentKey)")
 
         // CRITICAL: Update the content of hosting controllers
         // This ensures that when activeFile changes, the center panel updates to show EditorView

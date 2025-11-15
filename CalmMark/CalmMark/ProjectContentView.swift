@@ -66,7 +66,8 @@ struct ProjectContentView: View {
                         leadingWidth: $sidebarWidth,
                         trailingWidth: $previewPanelWidth,
                         showLeading: showSidebar,
-                        showTrailing: showPreviewPanel && tabManager.activeFile != nil
+                        showTrailing: showPreviewPanel && tabManager.activeFile != nil,
+                        contentKey: tabManager.activeFile?.url.absoluteString ?? "no-file"
                     ) {
                         // Leading: Sidebar
                         FileNavigatorView(
