@@ -130,9 +130,93 @@ struct MarkdownTextEditor: NSViewRepresentable {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
 
+            // Autocompletado Markdown
+            handleMarkdownAutocompletion(in: textView)
+
             // Apply syntax highlighting
             if parent.settings.syntaxHighlighting {
                 parent.applySyntaxHighlighting(to: textView)
+            }
+        }
+
+        // MARK: - Autocompletado de Markdown
+        private func handleMarkdownAutocompletion(in textView: NSTextView) {
+            let selectedRange = textView.selectedRange()
+            guard selectedRange.location > 0 else { return }
+
+            let text = textView.string as NSString
+            let checkLength = min(3, selectedRange.location)
+            let checkRange = NSRange(location: selectedRange.location - checkLength, length: checkLength)
+
+            guard checkRange.location >= 0,
+                  checkRange.location + checkRange.length <= text.length else { return }
+
+            let recentText = text.substring(with: checkRange)
+
+            // Auto-cerrar paréntesis en links
+            if recentText.hasSuffix("](") {
+                textView.insertText(")", replacementRange: selectedRange)
+                textView.setSelectedRange(NSRange(location: selectedRange.location, length: 0))
+            }
+
+            // Auto-cerrar comillas en markdown
+            else if recentText.hasSuffix("`") && !recentText.hasSuffix("``") {
+                textView.insertText("`", replacementRange: selectedRange)
+                textView.setSelectedRange(NSRange(location: selectedRange.location, length: 0))
+            }
+
+            // Auto-completar bloques de código
+            else if recentText.hasSuffix("```") {
+                let completion = "\n\n```"
+                textView.insertText(completion, replacementRange: selectedRange)
+                textView.setSelectedRange(NSRange(location: selectedRange.location + 1, length: 0))
+            }
+
+            // Auto-completar items de lista
+            else if recentText.hasSuffix("\n") {
+                handleListContinuation(in: textView, at: selectedRange.location)
+            }
+        }
+
+        private func handleListContinuation(in textView: NSTextView, at location: Int) {
+            let text = textView.string as NSString
+            guard location > 1 else { return }
+
+            // Buscar la línea anterior
+            var lineStart = location - 2
+            while lineStart > 0 && text.character(at: lineStart) != 0x0A { // \n
+                lineStart -= 1
+            }
+            if text.character(at: lineStart) == 0x0A {
+                lineStart += 1
+            }
+
+            let previousLineRange = NSRange(location: lineStart, length: location - lineStart - 1)
+            guard previousLineRange.length > 0 else { return }
+
+            let previousLine = text.substring(with: previousLineRange)
+
+            // Detectar lista no ordenada (- o *)
+            if let match = previousLine.range(of: "^\\s*([-*])\\s+", options: .regularExpression) {
+                let bullet = String(previousLine[match])
+                textView.insertText(bullet, replacementRange: NSRange(location: location, length: 0))
+                return
+            }
+
+            // Detectar lista ordenada (1., 2., etc.)
+            if let match = previousLine.range(of: "^\\s*(\\d+)\\.\\s+", options: .regularExpression) {
+                let numberStr = previousLine[match].trimmingCharacters(in: CharacterSet(charactersIn: ". "))
+                if let number = Int(numberStr) {
+                    let nextBullet = "\(number + 1). "
+                    textView.insertText(nextBullet, replacementRange: NSRange(location: location, length: 0))
+                    return
+                }
+            }
+
+            // Detectar task list (- [ ] o - [x])
+            if let match = previousLine.range(of: "^\\s*-\\s+\\[[ x]\\]\\s+", options: .regularExpression) {
+                textView.insertText("- [ ] ", replacementRange: NSRange(location: location, length: 0))
+                return
             }
         }
 
