@@ -53,8 +53,11 @@ class TabManager: ObservableObject {
     @Published var activeFile: OpenFile?
 
     func openFile(url: URL) {
+        LogManager.shared.log(.info, "Abriendo archivo: \(url.lastPathComponent)", context: "TabManager")
+
         // Check if already open
         if let existingFile = openFiles.first(where: { $0.url == url }) {
+            LogManager.shared.log(.debug, "Archivo ya estaba abierto, activándolo", context: "TabManager")
             activeFile = existingFile
             return
         }
@@ -65,8 +68,9 @@ class TabManager: ObservableObject {
             let newFile = OpenFile(url: url, content: content)
             openFiles.append(newFile)
             activeFile = newFile
+            LogManager.shared.log(.success, "Archivo abierto exitosamente: \(url.lastPathComponent) (\(content.count) caracteres)", context: "TabManager")
         } catch {
-            print("Error opening file: \(error)")
+            LogManager.shared.log(.error, "Error al abrir archivo \(url.lastPathComponent): \(error.localizedDescription)", context: "TabManager")
         }
     }
 

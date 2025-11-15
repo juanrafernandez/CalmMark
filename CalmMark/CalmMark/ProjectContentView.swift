@@ -16,6 +16,10 @@ struct ProjectContentView: View {
     @State private var viewMode: ViewMode = AppSettings.shared.defaultViewMode
     @State private var showSidebar: Bool = true
     @State private var sidebarWidth: CGFloat = 250
+    @State private var showPreviewPanel: Bool = true
+    @State private var previewPanelWidth: CGFloat = 350
+    @State private var showLogPanel: Bool = false
+    @State private var logPanelHeight: CGFloat = 200
     @State private var showExportSheet = false
     @State private var exportType: ExportType = .html
     @State private var showCommandTemplates = false
@@ -26,6 +30,8 @@ struct ProjectContentView: View {
             ProjectToolbarView(
                 viewMode: $viewMode,
                 showSidebar: $showSidebar,
+                showPreviewPanel: $showPreviewPanel,
+                showLogPanel: $showLogPanel,
                 fileManager: fileManager,
                 tabManager: tabManager,
                 onExportHTML: {
@@ -51,33 +57,84 @@ struct ProjectContentView: View {
 
             // Main content area
             GeometryReader { geometry in
-                HStack(spacing: 0) {
-                    // Sidebar
-                    if showSidebar {
-                        FileNavigatorView(
-                            fileManager: fileManager,
-                            openFiles: $tabManager.openFiles,
-                            activeFile: $tabManager.activeFile
-                        )
-                        .frame(width: sidebarWidth)
+                VStack(spacing: 0) {
+                    // Top: Sidebar + Editor + Preview
+                    HStack(spacing: 0) {
+                        // Sidebar izquierdo
+                        if showSidebar {
+                            FileNavigatorView(
+                                fileManager: fileManager,
+                                openFiles: $tabManager.openFiles,
+                                activeFile: $tabManager.activeFile
+                            )
+                            .frame(width: sidebarWidth)
 
-                        Divider()
+                            Divider()
+                        }
+
+                        // Editor central
+                        if let activeFile = tabManager.activeFile {
+                            EditorView(text: Binding(
+                                get: { activeFile.content },
+                                set: { newValue in
+                                    activeFile.content = newValue
+                                    activeFile.isDirty = true
+                                }
+                            ), settings: settings)
+                        } else {
+                            // Welcome/Empty state
+                            WelcomeView(
+                                fileManager: fileManager,
+                                onOpenFolder: {
+                                    fileManager.openFolder()
+                                },
+                                onCreateCommand: {
+                                    showCommandTemplates = true
+                                }
+                            )
+                        }
+
+                        // Panel de Preview derecho
+                        if showPreviewPanel, let activeFile = tabManager.activeFile {
+                            Divider()
+
+                            VStack(spacing: 0) {
+                                // Header del panel de preview
+                                HStack {
+                                    Image(systemName: "doc.richtext")
+                                        .font(.system(size: 12))
+                                    Text("Preview")
+                                        .font(.system(size: 12, weight: .semibold))
+                                    Spacer()
+                                    Button(action: {
+                                        withAnimation {
+                                            showPreviewPanel = false
+                                        }
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(NSColor.controlBackgroundColor))
+
+                                Divider()
+
+                                PreviewView(markdown: activeFile.content, settings: settings)
+                            }
+                            .frame(width: previewPanelWidth)
+                        }
                     }
 
-                    // Editor/Preview area
-                    if let activeFile = tabManager.activeFile {
-                        editorPreviewArea(for: activeFile, geometry: geometry)
-                    } else {
-                        // Welcome/Empty state
-                        WelcomeView(
-                            fileManager: fileManager,
-                            onOpenFolder: {
-                                fileManager.openFolder()
-                            },
-                            onCreateCommand: {
-                                showCommandTemplates = true
-                            }
-                        )
+                    // Panel de Logs inferior
+                    if showLogPanel {
+                        Divider()
+
+                        LogPanelView()
+                            .frame(height: logPanelHeight)
                     }
                 }
             }
@@ -156,33 +213,6 @@ struct ProjectContentView: View {
         }
     }
 
-    @ViewBuilder
-    private func editorPreviewArea(for file: OpenFile, geometry: GeometryProxy) -> some View {
-        HStack(spacing: 0) {
-            // Editor
-            if viewMode == .editor || viewMode == .split {
-                EditorView(text: Binding(
-                    get: { file.content },
-                    set: { newValue in
-                        file.content = newValue
-                        file.isDirty = true
-                    }
-                ), settings: settings)
-                .frame(width: viewMode == .split ? (geometry.size.width - (showSidebar ? sidebarWidth : 0)) / 2 : nil)
-            }
-
-            // Divider in split mode
-            if viewMode == .split {
-                Divider()
-            }
-
-            // Preview
-            if viewMode == .preview || viewMode == .split {
-                PreviewView(markdown: file.content, settings: settings)
-                    .frame(width: viewMode == .split ? (geometry.size.width - (showSidebar ? sidebarWidth : 0)) / 2 : nil)
-            }
-        }
-    }
 }
 
 // MARK: - Project Toolbar
@@ -190,11 +220,14 @@ struct ProjectContentView: View {
 struct ProjectToolbarView: View {
     @Binding var viewMode: ViewMode
     @Binding var showSidebar: Bool
+    @Binding var showPreviewPanel: Bool
+    @Binding var showLogPanel: Bool
     let fileManager: FileSystemManager
     let tabManager: TabManager
     var onExportHTML: () -> Void
     var onExportPDF: () -> Void
     var onShowTemplates: () -> Void
+    @ObservedObject var logManager = LogManager.shared
 
     var body: some View {
         HStack(spacing: 12) {
@@ -212,18 +245,46 @@ struct ProjectToolbarView: View {
             .help("Toggle Sidebar (⌘0)")
             .padding(.leading, 12)
 
+            // Preview panel toggle
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showPreviewPanel.toggle()
+                }
+            }) {
+                Image(systemName: "sidebar.right")
+                    .font(.system(size: 14))
+                    .foregroundColor(showPreviewPanel ? .accentColor : .secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Preview Panel")
+
+            // Log panel toggle
+            Button(action: {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showLogPanel.toggle()
+                }
+            }) {
+                HStack(spacing: 4) {
+                    Image(systemName: "ladybug.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(showLogPanel ? .accentColor : .secondary)
+                    if logManager.hasErrors {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .font(.system(size: 10))
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .help("Toggle Log Panel")
+
             Divider()
                 .frame(height: 16)
 
-            // View mode selector
-            Picker("View Mode", selection: $viewMode) {
-                ForEach(ViewMode.allCases, id: \.self) { mode in
-                    Label(mode.rawValue, systemImage: iconForMode(mode))
-                        .tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 300)
+            // View mode selector (removed - now using panels)
+            Text("Editor Mode")
+                .font(.system(size: 12))
+                .foregroundColor(.secondary)
 
             Spacer()
 

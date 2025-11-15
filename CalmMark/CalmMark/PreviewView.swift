@@ -49,12 +49,21 @@ struct PreviewView: View {
     }
 
     private func updateHTML(_ markdown: String) {
+        LogManager.shared.log(.debug, "Iniciando renderizado de markdown (\(markdown.count) caracteres)", context: "Preview")
+
         let newHTML = MarkdownRenderer.renderToHTML(markdown, settings: settings)
         html = newHTML
 
+        LogManager.shared.log(.debug, "HTML generado (\(newHTML.count) caracteres)", context: "Preview")
+
         // Force reload if webView is already created
         DispatchQueue.main.async {
-            webView?.loadHTMLString(newHTML, baseURL: nil)
+            if let webView = webView {
+                LogManager.shared.log(.info, "Cargando HTML en WebView", context: "Preview")
+                webView.loadHTMLString(newHTML, baseURL: nil)
+            } else {
+                LogManager.shared.log(.warning, "WebView aún no está inicializado", context: "Preview")
+            }
         }
     }
 }
@@ -104,12 +113,19 @@ struct WebViewWrapper: NSViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            // Successfully loaded
-            print("Preview loaded successfully")
+            LogManager.shared.log(.success, "Preview cargado exitosamente", context: "WebView")
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            print("Preview failed to load: \(error.localizedDescription)")
+            LogManager.shared.log(.error, "Error al cargar preview: \(error.localizedDescription)", context: "WebView")
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            LogManager.shared.log(.error, "Error provisional al cargar preview: \(error.localizedDescription)", context: "WebView")
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            LogManager.shared.log(.debug, "Iniciando carga de preview", context: "WebView")
         }
     }
 }
