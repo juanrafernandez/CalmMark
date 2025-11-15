@@ -68,6 +68,7 @@ struct ProjectContentView: View {
                                 activeFile: $tabManager.activeFile
                             )
                             .frame(width: sidebarWidth)
+                            .animation(.none, value: sidebarWidth)  // No animation for smooth dragging
 
                             DragDivider(
                                 orientation: .vertical,
@@ -146,6 +147,7 @@ struct ProjectContentView: View {
                                     }
                             }
                             .frame(width: previewPanelWidth)
+                            .animation(.none, value: previewPanelWidth)  // No animation for smooth dragging
                         }
                     }
 
@@ -161,6 +163,7 @@ struct ProjectContentView: View {
 
                         LogPanelView()
                             .frame(height: logPanelHeight)
+                            .animation(.none, value: logPanelHeight)  // No animation for smooth dragging
                     }
                 }
             }

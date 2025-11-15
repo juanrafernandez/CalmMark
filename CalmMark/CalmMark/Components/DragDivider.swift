@@ -72,7 +72,7 @@ struct DragDivider: View {
                     }
                 }
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 0)
                         .onChanged { value in
                             if !isDragging {
                                 isDragging = true
@@ -87,7 +87,10 @@ struct DragDivider: View {
                             // Clamp to min/max
                             newOffset = max(minOffset, min(maxOffset, newOffset))
 
-                            offset = newOffset
+                            // Update immediately without animation for smooth dragging
+                            withAnimation(.none) {
+                                offset = newOffset
+                            }
                         }
                         .onEnded { _ in
                             isDragging = false
