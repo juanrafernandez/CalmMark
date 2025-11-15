@@ -100,12 +100,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
             // Apply syntax highlighting
             if parent.settings.syntaxHighlighting {
-                applySyntaxHighlighting(to: textView)
+                parent.applySyntaxHighlighting(to: textView)
             }
         }
     }
 
-    private func applySyntaxHighlighting(to textView: NSTextView) {
+    func applySyntaxHighlighting(to textView: NSTextView) {
         guard let storage = textView.textStorage else { return }
 
         let fullRange = NSRange(location: 0, length: storage.length)
@@ -197,7 +197,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         )
     }
 
-    private func highlightPattern(
+    func highlightPattern(
         pattern: String,
         in storage: NSTextStorage,
         color: NSColor,
