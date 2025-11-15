@@ -84,34 +84,32 @@ struct WebViewWrapper: NSViewRepresentable {
 
         let config = WKWebViewConfiguration()
 
-        // Enable JavaScript
-        config.preferences.javaScriptEnabled = true
+        // Disable hardware acceleration to avoid Metal shader issues
+        config.preferences.setValue(false, forKey: "acceleratedDrawingEnabled")
+        config.preferences.setValue(false, forKey: "canvasUsesAcceleratedDrawing")
+        config.preferences.setValue(false, forKey: "webGLEnabled")
 
-        // Allow local content
-        if #available(macOS 10.15, *) {
-            config.defaultWebpagePreferences.allowsContentJavaScript = true
+        // Disable GPU process to avoid Metal issues
+        if #available(macOS 11.0, *) {
+            config.preferences.setValue(false, forKey: "useGPUProcessForDOMRendering")
         }
 
-        // Set user agent to avoid compatibility issues
+        // Enable JavaScript (still needed for basic functionality)
+        config.preferences.javaScriptEnabled = true
+
+        // Set user agent
         config.applicationNameForUserAgent = "CalmMark"
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
 
-        // Configure appearance - try without setValue
-        #if DEBUG
-        LogManager.shared.log(.debug, "Configurando apariencia del WebView", context: "WebView")
-        #endif
+        // Disable hardware acceleration at WebView level too
+        webView.setValue(false, forKey: "drawsBackground")
 
-        // Make background transparent
-        if let wkWebView = webView as? WKWebView {
-            wkWebView.setValue(false, forKey: "drawsBackground")
-        }
+        // Don't allow magnification to avoid complex rendering
+        webView.allowsMagnification = false
 
-        // Allow magnification
-        webView.allowsMagnification = true
-
-        LogManager.shared.log(.success, "WKWebView creado correctamente", context: "WebView")
+        LogManager.shared.log(.success, "WKWebView creado correctamente (hardware acceleration disabled)", context: "WebView")
 
         // Store reference
         DispatchQueue.main.async {
