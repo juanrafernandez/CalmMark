@@ -15,16 +15,16 @@ struct PreviewView: View {
 
     var body: some View {
         WebView(html: html)
-            .onChange(of: markdown) { newValue in
+            .onChange(of: markdown) { oldValue, newValue in
                 updateHTML(newValue)
             }
-            .onChange(of: settings.appearanceMode) { _ in
+            .onChange(of: settings.appearanceMode) { _, _ in
                 updateHTML(markdown)
             }
-            .onChange(of: settings.previewFontSize) { _ in
+            .onChange(of: settings.previewFontSize) { _, _ in
                 updateHTML(markdown)
             }
-            .onChange(of: settings.maxPreviewWidth) { _ in
+            .onChange(of: settings.maxPreviewWidth) { _, _ in
                 updateHTML(markdown)
             }
             .onAppear {

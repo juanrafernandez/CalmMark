@@ -110,6 +110,57 @@ struct CalmMarkCommands: Commands {
             }
             .keyboardShortcut("P", modifiers: [.command, .shift])
         }
+
+        // Format commands
+        CommandMenu("Format") {
+            Button("Bold") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.bold)
+            }
+            .keyboardShortcut("B", modifiers: [.command])
+
+            Button("Italic") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.italic)
+            }
+            .keyboardShortcut("I", modifiers: [.command])
+
+            Button("Strikethrough") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.strikethrough)
+            }
+
+            Divider()
+
+            Button("Inline Code") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.inlineCode)
+            }
+            .keyboardShortcut("K", modifiers: [.command])
+
+            Button("Code Block") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.codeBlock)
+            }
+            .keyboardShortcut("K", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Link") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.link)
+            }
+            .keyboardShortcut("L", modifiers: [.command])
+
+            Button("Image") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.image)
+            }
+            .keyboardShortcut("I", modifiers: [.command, .shift])
+
+            Divider()
+
+            Button("Blockquote") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.blockquote)
+            }
+
+            Button("Horizontal Rule") {
+                NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.horizontalRule)
+            }
+        }
     }
 }
 
@@ -123,4 +174,6 @@ extension Notification.Name {
     static let saveAllFiles = Notification.Name("saveAllFiles")
     static let closeActiveTab = Notification.Name("closeActiveTab")
     static let closeAllTabs = Notification.Name("closeAllTabs")
+    static let applyFormat = Notification.Name("applyFormat")
+    static let openDroppedFile = Notification.Name("openDroppedFile")
 }

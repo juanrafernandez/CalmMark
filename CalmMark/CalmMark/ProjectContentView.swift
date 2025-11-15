@@ -119,6 +119,11 @@ struct ProjectContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .closeAllTabs)) { _ in
             tabManager.closeAllFiles()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openDroppedFile)) { notification in
+            if let url = notification.object as? URL {
+                tabManager.openFile(url: url)
+            }
+        }
         .sheet(isPresented: $showExportSheet) {
             if let activeFile = tabManager.activeFile {
                 ExportView(
@@ -143,7 +148,7 @@ struct ProjectContentView: View {
                 fileManager.setRootFolder(url)
             }
         }
-        .onChange(of: fileManager.rootFolder) { newFolder in
+        .onChange(of: fileManager.rootFolder) { oldFolder, newFolder in
             // Save last opened folder
             if let folder = newFolder {
                 UserDefaults.standard.set(folder.url.path, forKey: "lastOpenedFolder")

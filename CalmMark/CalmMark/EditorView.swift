@@ -11,19 +11,43 @@ import AppKit
 struct EditorView: View {
     @Binding var text: String
     @ObservedObject var settings: AppSettings
+    @State private var textViewRef: NSTextView?
 
     var body: some View {
-        MarkdownTextEditor(
-            text: $text,
-            settings: settings
-        )
-        .background(Color(NSColor.textBackgroundColor))
+        VStack(spacing: 0) {
+            // Formatting toolbar
+            MarkdownFormattingToolbar(onFormat: { format in
+                applyFormat(format)
+            })
+
+            Divider()
+
+            // Editor
+            MarkdownTextEditor(
+                text: $text,
+                settings: settings,
+                textViewRef: $textViewRef
+            )
+            .background(Color(NSColor.textBackgroundColor))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .applyFormat)) { notification in
+            if let format = notification.object as? MarkdownFormat {
+                applyFormat(format)
+            }
+        }
+    }
+
+    private func applyFormat(_ format: MarkdownFormat) {
+        if let textView = textViewRef {
+            textView.applyMarkdownFormat(format)
+        }
     }
 }
 
 struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
     var settings: AppSettings
+    @Binding var textViewRef: NSTextView?
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -50,9 +74,17 @@ struct MarkdownTextEditor: NSViewRepresentable {
         // Initial text
         textView.string = text
 
+        // Enable drag and drop
+        textView.registerForDraggedTypes([.fileURL])
+
         // Configure scroll view
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
+
+        // Store reference for toolbar access
+        DispatchQueue.main.async {
+            textViewRef = textView
+        }
 
         return scrollView
     }
@@ -102,6 +134,50 @@ struct MarkdownTextEditor: NSViewRepresentable {
             if parent.settings.syntaxHighlighting {
                 parent.applySyntaxHighlighting(to: textView)
             }
+        }
+
+        // Drag and drop support
+        func textView(_ textView: NSTextView,
+                     shouldAcceptDraggingInfo draggingInfo: NSDraggingInfo) -> Bool {
+            // Check if we have a file URL
+            guard let items = draggingInfo.draggingPasteboard.pasteboardItems else {
+                return false
+            }
+
+            for item in items {
+                if let urlString = item.string(forType: .fileURL),
+                   let url = URL(string: urlString),
+                   url.pathExtension == "md" {
+                    return true
+                }
+            }
+
+            return false
+        }
+
+        func textView(_ textView: NSTextView,
+                     handleDraggingInfo draggingInfo: NSDraggingInfo) -> Bool {
+            guard let items = draggingInfo.draggingPasteboard.pasteboardItems else {
+                return false
+            }
+
+            for item in items {
+                if let urlString = item.string(forType: .fileURL),
+                   let url = URL(string: urlString),
+                   url.pathExtension == "md" {
+                    // Read the file content
+                    if let content = try? String(contentsOf: url, encoding: .utf8) {
+                        // Post notification to open the file
+                        NotificationCenter.default.post(
+                            name: .openDroppedFile,
+                            object: url
+                        )
+                        return true
+                    }
+                }
+            }
+
+            return false
         }
     }
 
