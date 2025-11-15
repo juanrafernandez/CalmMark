@@ -241,8 +241,10 @@ struct ProjectContentView: View {
                 print("🔄 [ProjectContentView] Active file cleared")
             }
             // CRITICAL: Force SwiftUI to redraw by changing @State
-            updateTrigger += 1
-            print("🔄 [ProjectContentView] Update trigger incremented to: \(updateTrigger)")
+            DispatchQueue.main.async {
+                updateTrigger += 1
+                print("🔄 [ProjectContentView] Update trigger incremented to: \(updateTrigger)")
+            }
         }
     }
 
