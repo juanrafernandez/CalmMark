@@ -64,15 +64,13 @@ struct ProjectContentView: View {
                         trailingWidth: $previewPanelWidth
                     ) {
                         // Leading: Sidebar (optional)
-                        Group {
-                            if showSidebar {
-                                FileNavigatorView(
-                                    fileManager: fileManager,
-                                    openFiles: $tabManager.openFiles,
-                                    activeFile: $tabManager.activeFile
-                                )
-                            }
-                        }
+                        showSidebar ? AnyView(
+                            FileNavigatorView(
+                                fileManager: fileManager,
+                                openFiles: $tabManager.openFiles,
+                                activeFile: $tabManager.activeFile
+                            )
+                        ) : nil
                     } center: {
                         // Center: Editor (always visible)
                         if let activeFile = tabManager.activeFile {
@@ -96,53 +94,49 @@ struct ProjectContentView: View {
                         }
                     } trailing: {
                         // Trailing: Preview (optional)
-                        Group {
-                            if showPreviewPanel, let activeFile = tabManager.activeFile {
-                                VStack(spacing: 0) {
-                                    // Header del panel de preview
-                                    HStack {
-                                        Image(systemName: "doc.richtext")
-                                            .font(.system(size: 12))
-                                        Text("Preview")
-                                            .font(.system(size: 12, weight: .semibold))
+                        (showPreviewPanel && tabManager.activeFile != nil) ? AnyView(
+                            VStack(spacing: 0) {
+                                // Header del panel de preview
+                                HStack {
+                                    Image(systemName: "doc.richtext")
+                                        .font(.system(size: 12))
+                                    Text("Preview")
+                                        .font(.system(size: 12, weight: .semibold))
 
-                                        Text("(\(activeFile.content.count) chars)")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.secondary)
+                                    Text("(\(tabManager.activeFile?.content.count ?? 0) chars)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
 
-                                        Spacer()
-                                        Button(action: {
-                                            withAnimation {
-                                                showPreviewPanel = false
-                                            }
-                                        }) {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .font(.system(size: 12))
-                                                .foregroundColor(.secondary)
+                                    Spacer()
+                                    Button(action: {
+                                        withAnimation {
+                                            showPreviewPanel = false
                                         }
-                                        .buttonStyle(.plain)
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondary)
                                     }
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 8)
-                                    .background(Color(NSColor.controlBackgroundColor))
+                                    .buttonStyle(.plain)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(NSColor.controlBackgroundColor))
 
-                                    Divider()
+                                Divider()
 
+                                if let activeFile = tabManager.activeFile {
                                     PreviewView(markdown: activeFile.content, settings: settings)
                                         .onAppear {
                                             LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
                                         }
                                 }
                             }
-                        }
+                        ) : nil
                     }
                 } bottom: {
                     // Bottom: Log panel (optional)
-                    Group {
-                        if showLogPanel {
-                            LogPanelView()
-                        }
-                    }
+                    showLogPanel ? AnyView(LogPanelView()) : nil
                 }
             }
         }
