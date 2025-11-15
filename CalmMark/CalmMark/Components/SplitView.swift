@@ -198,6 +198,19 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
 
         print("🔄 [HSplitView3] updateNSView - showLeading: \(showLeading), showTrailing: \(showTrailing)")
 
+        // CRITICAL: Update the content of hosting controllers
+        // This ensures that when activeFile changes, the center panel updates to show EditorView
+        if let leadingController = context.coordinator.leadingController {
+            leadingController.rootView = leading
+        }
+        if let centerController = context.coordinator.centerController {
+            centerController.rootView = center
+            print("📝 [HSplitView3] Updated center panel content")
+        }
+        if let trailingController = context.coordinator.trailingController {
+            trailingController.rootView = trailing
+        }
+
         // Leading panel (sidebar)
         let leadingView = splitView.arrangedSubviews[0]
         let shouldCollapseLeading = !showLeading

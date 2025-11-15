@@ -141,7 +141,6 @@ struct ProjectContentView: View {
                             }
                         }
                     }
-                    .id(tabManager.activeFile?.url.absoluteString ?? "no-file")
                 } bottom: {
                     // Bottom: Log panel
                     LogPanelView()
