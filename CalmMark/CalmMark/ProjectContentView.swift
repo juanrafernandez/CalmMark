@@ -84,6 +84,9 @@ struct ProjectContentView: View {
                                     activeFile.isDirty = true
                                 }
                             ), settings: settings)
+                            .onAppear {
+                                print("✅ [ProjectContentView] EditorView appeared with file: \(activeFile.name)")
+                            }
                         } else {
                             WelcomeView(
                                 fileManager: fileManager,
@@ -94,6 +97,9 @@ struct ProjectContentView: View {
                                     showCommandTemplates = true
                                 }
                             )
+                            .onAppear {
+                                print("👋 [ProjectContentView] WelcomeView appeared (no active file)")
+                            }
                         }
                     } trailing: {
                         // Trailing: Preview
@@ -221,6 +227,13 @@ struct ProjectContentView: View {
             // Save last opened folder
             if let folder = newFolder {
                 UserDefaults.standard.set(folder.url.path, forKey: "lastOpenedFolder")
+            }
+        }
+        .onChange(of: tabManager.activeFile) { oldFile, newFile in
+            if let file = newFile {
+                print("🔄 [ProjectContentView] Active file changed to: \(file.name)")
+            } else {
+                print("🔄 [ProjectContentView] Active file cleared")
             }
         }
     }

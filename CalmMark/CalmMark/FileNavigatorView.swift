@@ -232,6 +232,8 @@ struct FileTreeItemView: View {
     }
 
     private func handleTap() {
+        print("🖱️ [FileNavigatorView] Tap on: \(item.name) - isDirectory: \(item.isDirectory), isMarkdown: \(item.isMarkdown)")
+
         if item.isDirectory {
             withAnimation(.easeInOut(duration: 0.15)) {
                 item.isExpanded.toggle()
@@ -241,22 +243,32 @@ struct FileTreeItemView: View {
             }
         } else if item.isMarkdown {
             openFile(item)
+        } else {
+            print("⚠️ [FileNavigatorView] File is not markdown, ignored")
         }
     }
 
     private func openFile(_ item: FileItem) {
+        print("📂 [FileNavigatorView] Opening file: \(item.name)")
+
         // Check if already open
         if let existingFile = openFiles.first(where: { $0.url == item.url }) {
+            print("✅ [FileNavigatorView] File already open, setting as active")
             activeFile = existingFile
+            print("🎯 [FileNavigatorView] Active file set: \(existingFile.name)")
         } else {
             // Load file content
             do {
+                print("📄 [FileNavigatorView] Loading file from disk: \(item.url.path)")
                 let content = try String(contentsOf: item.url, encoding: .utf8)
+                print("✅ [FileNavigatorView] Loaded \(content.count) characters")
                 let newFile = OpenFile(url: item.url, content: content)
                 openFiles.append(newFile)
                 activeFile = newFile
+                print("🎯 [FileNavigatorView] New file opened and set as active: \(newFile.name)")
             } catch {
-                print("Error opening file: \(error)")
+                print("❌ [FileNavigatorView] Error opening file: \(error)")
+                LogManager.shared.log(.error, "Error opening file: \(error.localizedDescription)", context: "FileNavigator")
             }
         }
     }
