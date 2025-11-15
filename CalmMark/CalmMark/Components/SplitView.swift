@@ -304,16 +304,21 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
 
     let showBottom: Bool
 
+    // CRITICAL: This triggers updateNSView when content changes, without destroying the view
+    let contentVersion: Int
+
     @Binding var bottomHeight: CGFloat
 
     init(
         bottomHeight: Binding<CGFloat>,
         showBottom: Bool = true,
+        contentVersion: Int = 0,
         @ViewBuilder top: () -> Top,
         @ViewBuilder bottom: () -> Bottom
     ) {
         self._bottomHeight = bottomHeight
         self.showBottom = showBottom
+        self.contentVersion = contentVersion
         self.top = top()
         self.bottom = bottom()
     }
@@ -363,13 +368,13 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         // Update visibility of bottom panel using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 2 else { return }
 
-        print("🔄 [VSplitView2] updateNSView - showBottom: \(showBottom)")
+        print("🔄 [VSplitView2] updateNSView - showBottom: \(showBottom), contentVersion: \(contentVersion)")
 
         // CRITICAL: Update the content of hosting controllers
-        // This ensures that when the top content changes (e.g., HSplitView3 recreated), it updates
+        // This updates the content WITHOUT destroying and recreating the views
         if let topController = context.coordinator.topController {
             topController.rootView = top
-            print("📝 [VSplitView2] Updated top panel content")
+            print("📝 [VSplitView2] Updated top panel content (version \(contentVersion))")
         }
         if let bottomController = context.coordinator.bottomController {
             bottomController.rootView = bottom

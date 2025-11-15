@@ -62,7 +62,8 @@ struct ProjectContentView: View {
             GeometryReader { geometry in
                 VSplitView2(
                     bottomHeight: $logPanelHeight,
-                    showBottom: showLogPanel
+                    showBottom: showLogPanel,
+                    contentVersion: updateTrigger
                 ) {
                     // Top: Horizontal split (Sidebar + Editor + Preview)
                     HSplitView3(
@@ -149,7 +150,6 @@ struct ProjectContentView: View {
                     // Bottom: Log panel
                     LogPanelView()
                 }
-                .id(updateTrigger)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .changeViewMode)) { notification in
