@@ -158,17 +158,28 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
 
         print("📊 [HSplitView3] Added \(splitView.arrangedSubviews.count) subviews to split view")
 
-        // Apply initial visibility
-        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 0)
-        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 2)
+        // IMPORTANTE: Establecer posiciones iniciales DESPUÉS de agregar las vistas
+        // Esto asegura que los paneles tengan el tamaño correcto al inicio
+        DispatchQueue.main.async {
+            if self.showLeading {
+                splitView.setPosition(self.leadingWidth, ofDividerAt: 0)
+                print("📐 [HSplitView3] Set leading panel position to \(self.leadingWidth)")
+            } else {
+                splitView.setPosition(0, ofDividerAt: 0)
+                leadingController.view.isHidden = true
+                print("👁️ [HSplitView3] Collapsed leading panel")
+            }
 
-        if !showLeading {
-            leadingController.view.isHidden = true
-            print("👁️ [HSplitView3] Hiding leading panel")
-        }
-        if !showTrailing {
-            trailingController.view.isHidden = true
-            print("👁️ [HSplitView3] Hiding trailing panel")
+            if self.showTrailing {
+                let totalWidth = splitView.bounds.width
+                splitView.setPosition(totalWidth - self.trailingWidth, ofDividerAt: 1)
+                print("📐 [HSplitView3] Set trailing panel position to \(totalWidth - self.trailingWidth)")
+            } else {
+                let totalWidth = splitView.bounds.width
+                splitView.setPosition(totalWidth, ofDividerAt: 1)
+                trailingController.view.isHidden = true
+                print("👁️ [HSplitView3] Collapsed trailing panel")
+            }
         }
 
         return splitView
@@ -274,6 +285,8 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSSplitView {
+        print("🔧 [VSplitView2] Creating split view - showBottom: \(showBottom)")
+
         let splitView = NSSplitView()
         splitView.isVertical = false  // Vertical = stacks horizontally, so false = stacks vertically
         splitView.dividerStyle = .thin
@@ -293,11 +306,20 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         splitView.addArrangedSubview(topController.view)
         splitView.addArrangedSubview(bottomController.view)
 
-        // Apply initial visibility
-        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 1)
+        print("📊 [VSplitView2] Added \(splitView.arrangedSubviews.count) subviews to split view")
 
-        if !showBottom {
-            bottomController.view.isHidden = true
+        // IMPORTANTE: Establecer posiciones iniciales DESPUÉS de agregar las vistas
+        DispatchQueue.main.async {
+            if self.showBottom {
+                let totalHeight = splitView.bounds.height
+                splitView.setPosition(totalHeight - self.bottomHeight, ofDividerAt: 0)
+                print("📐 [VSplitView2] Set bottom panel position to \(totalHeight - self.bottomHeight)")
+            } else {
+                let totalHeight = splitView.bounds.height
+                splitView.setPosition(totalHeight, ofDividerAt: 0)
+                bottomController.view.isHidden = true
+                print("👁️ [VSplitView2] Collapsed bottom panel")
+            }
         }
 
         return splitView
