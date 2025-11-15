@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		35782CF12EC8EDAD00427117 /* MarkdownFormattingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */; };
+		35782CF32EC8F5D600427117 /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF22EC8F5D600427117 /* LogPanelView.swift */; };
+		35782CF52EC8F5DD00427117 /* LogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF42EC8F5DD00427117 /* LogManager.swift */; };
 		AA0001001A000001 /* CalmMarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001001A000002 /* CalmMarkApp.swift */; };
 		AA0001011A000001 /* CalmMarkDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001011A000002 /* CalmMarkDocument.swift */; };
 		AA0001021A000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001021A000002 /* ContentView.swift */; };
@@ -32,6 +34,8 @@
 
 /* Begin PBXFileReference section */
 		35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownFormattingToolbar.swift; sourceTree = "<group>"; };
+		35782CF22EC8F5D600427117 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPanelView.swift; sourceTree = "<group>"; };
+		35782CF42EC8F5DD00427117 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
 		AA0000001A000001 /* CalmMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalmMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkApp.swift; sourceTree = "<group>"; };
 		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkDocument.swift; sourceTree = "<group>"; };
@@ -97,7 +101,9 @@
 				AA0001051A000002 /* PreferencesView.swift */,
 				AA0001101A000002 /* ExportView.swift */,
 				AA0001061A000002 /* AppSettings.swift */,
+				35782CF22EC8F5D600427117 /* LogPanelView.swift */,
 				AA0001111A000002 /* FileSystemManager.swift */,
+				35782CF42EC8F5DD00427117 /* LogManager.swift */,
 				AA0001121A000002 /* FileNavigatorView.swift */,
 				AA0001131A000002 /* TabManager.swift */,
 				AA0001141A000002 /* TabBarView.swift */,
@@ -194,6 +200,8 @@
 			files = (
 				AA0001021A000001 /* ContentView.swift in Sources */,
 				AA0001151A000001 /* ProjectContentView.swift in Sources */,
+				35782CF32EC8F5D600427117 /* LogPanelView.swift in Sources */,
+				35782CF52EC8F5DD00427117 /* LogManager.swift in Sources */,
 				AA0001011A000001 /* CalmMarkDocument.swift in Sources */,
 				AA0001001A000001 /* CalmMarkApp.swift in Sources */,
 				AA0001031A000001 /* EditorView.swift in Sources */,
