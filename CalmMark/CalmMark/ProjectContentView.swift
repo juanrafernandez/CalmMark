@@ -105,6 +105,11 @@ struct ProjectContentView: View {
                                         .font(.system(size: 12))
                                     Text("Preview")
                                         .font(.system(size: 12, weight: .semibold))
+
+                                    Text("(\(activeFile.content.count) chars)")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.secondary)
+
                                     Spacer()
                                     Button(action: {
                                         withAnimation {
@@ -124,6 +129,9 @@ struct ProjectContentView: View {
                                 Divider()
 
                                 PreviewView(markdown: activeFile.content, settings: settings)
+                                    .onAppear {
+                                        LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
+                                    }
                             }
                             .frame(width: previewPanelWidth)
                         }

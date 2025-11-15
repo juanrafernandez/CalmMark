@@ -104,6 +104,17 @@ struct LogPanelView: View {
                 .help("Auto-scroll")
 
                 Button(action: {
+                    let allText = filteredLogs.map { $0.displayText }.joined(separator: "\n")
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(allText, forType: .string)
+                }) {
+                    Image(systemName: "doc.on.clipboard")
+                        .font(.system(size: 12))
+                }
+                .buttonStyle(.plain)
+                .help("Copy all logs to clipboard")
+
+                Button(action: {
                     logManager.clearErrors()
                 }) {
                     Image(systemName: "trash.circle")
@@ -134,9 +145,21 @@ struct LogPanelView: View {
                         ForEach(filteredLogs) { entry in
                             LogEntryRow(entry: entry)
                                 .id(entry.id)
+                                .contextMenu {
+                                    Button("Copy Log") {
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(entry.displayText, forType: .string)
+                                    }
+                                    Button("Copy All Logs") {
+                                        let allText = filteredLogs.map { $0.displayText }.joined(separator: "\n")
+                                        NSPasteboard.general.clearContents()
+                                        NSPasteboard.general.setString(allText, forType: .string)
+                                    }
+                                }
                         }
                     }
                     .padding(8)
+                    .textSelection(.enabled)
                 }
                 .background(Color(NSColor.textBackgroundColor))
                 .onChange(of: logManager.logs.count) { _, _ in
