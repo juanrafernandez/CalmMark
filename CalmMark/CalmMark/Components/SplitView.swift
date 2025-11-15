@@ -189,16 +189,21 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         // Update visibility of panels using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 3 else { return }
 
+        print("🔄 [HSplitView3] updateNSView - showLeading: \(showLeading), showTrailing: \(showTrailing)")
+
         // Leading panel (sidebar)
         let leadingView = splitView.arrangedSubviews[0]
         let shouldCollapseLeading = !showLeading
         if shouldCollapseLeading != leadingView.isHidden {
+            print("🔄 [HSplitView3] Leading panel state change: hidden=\(leadingView.isHidden) -> \(shouldCollapseLeading)")
             if shouldCollapseLeading {
                 leadingView.isHidden = true
                 splitView.setPosition(0, ofDividerAt: 0)
+                print("👁️ [HSplitView3] Collapsing leading panel")
             } else {
                 leadingView.isHidden = false
                 splitView.setPosition(leadingWidth, ofDividerAt: 0)
+                print("👁️ [HSplitView3] Expanding leading panel to \(leadingWidth)")
             }
         }
 
@@ -206,14 +211,18 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         let trailingView = splitView.arrangedSubviews[2]
         let shouldCollapseTrailing = !showTrailing
         if shouldCollapseTrailing != trailingView.isHidden {
+            print("🔄 [HSplitView3] Trailing panel state change: hidden=\(trailingView.isHidden) -> \(shouldCollapseTrailing)")
             if shouldCollapseTrailing {
                 trailingView.isHidden = true
                 let totalWidth = splitView.bounds.width
                 splitView.setPosition(totalWidth, ofDividerAt: 1)
+                print("👁️ [HSplitView3] Collapsing trailing panel")
             } else {
                 trailingView.isHidden = false
                 let totalWidth = splitView.bounds.width
-                splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: 1)
+                let position = totalWidth - trailingWidth
+                splitView.setPosition(position, ofDividerAt: 1)
+                print("👁️ [HSplitView3] Expanding trailing panel - totalWidth:\(totalWidth), trailingWidth:\(trailingWidth), position:\(position)")
             }
         }
     }
