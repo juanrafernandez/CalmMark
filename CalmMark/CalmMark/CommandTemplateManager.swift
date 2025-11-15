@@ -34,7 +34,6 @@ class CommandTemplateManager {
             name: "Code Review",
             description: "Review code changes for quality and best practices",
             filename: "review.md",
-            category: .code,
             content: """
             # Code Review
 
@@ -53,7 +52,8 @@ class CommandTemplateManager {
             1. Summary
             2. Issues found (if any)
             3. Suggestions for improvement
-            """
+            """,
+            category: .code
         ),
 
         // Generate Tests Template
@@ -61,7 +61,6 @@ class CommandTemplateManager {
             name: "Generate Tests",
             description: "Generate unit tests for code",
             filename: "generate-tests.md",
-            category: .testing,
             content: """
             # Generate Unit Tests
 
@@ -78,7 +77,8 @@ class CommandTemplateManager {
 
             Language: {{language}}
             Test Framework: {{framework}}
-            """
+            """,
+            category: .testing
         ),
 
         // Explain Code Template
@@ -86,7 +86,6 @@ class CommandTemplateManager {
             name: "Explain Code",
             description: "Get detailed explanation of code",
             filename: "explain.md",
-            category: .code,
             content: """
             # Explain Code
 
@@ -102,7 +101,8 @@ class CommandTemplateManager {
             - Edge cases to consider
 
             Audience level: {{level}} (beginner/intermediate/advanced)
-            """
+            """,
+            category: .code
         ),
 
         // Refactor Code Template
@@ -110,7 +110,6 @@ class CommandTemplateManager {
             name: "Refactor Code",
             description: "Suggest refactoring improvements",
             filename: "refactor.md",
-            category: .code,
             content: """
             # Refactor Code
 
@@ -128,7 +127,8 @@ class CommandTemplateManager {
             - Consider performance
 
             Language: {{language}}
-            """
+            """,
+            category: .code
         ),
 
         // Write Documentation Template
@@ -136,7 +136,6 @@ class CommandTemplateManager {
             name: "Write Documentation",
             description: "Generate documentation for code",
             filename: "document.md",
-            category: .documentation,
             content: """
             # Write Documentation
 
@@ -152,7 +151,8 @@ class CommandTemplateManager {
             - Related functions/classes
 
             Documentation style: {{style}} (JSDoc/Javadoc/Python docstring/etc)
-            """
+            """,
+            category: .documentation
         ),
 
         // Git Commit Message Template
@@ -160,7 +160,6 @@ class CommandTemplateManager {
             name: "Generate Commit Message",
             description: "Create conventional commit messages",
             filename: "commit-message.md",
-            category: .git,
             content: """
             # Generate Commit Message
 
@@ -183,7 +182,8 @@ class CommandTemplateManager {
             - Use imperative mood
             - Keep subject under 50 chars
             - Explain what and why, not how
-            """
+            """,
+            category: .git
         ),
 
         // Bug Fix Template
@@ -191,7 +191,6 @@ class CommandTemplateManager {
             name: "Fix Bug",
             description: "Analyze and fix bugs",
             filename: "fix-bug.md",
-            category: .code,
             content: """
             # Fix Bug
 
@@ -211,7 +210,8 @@ class CommandTemplateManager {
             4. Suggest how to prevent similar bugs
 
             Language: {{language}}
-            """
+            """,
+            category: .code
         ),
 
         // API Documentation Template
@@ -219,7 +219,6 @@ class CommandTemplateManager {
             name: "API Documentation",
             description: "Generate API endpoint documentation",
             filename: "api-docs.md",
-            category: .documentation,
             content: """
             # API Documentation
 
@@ -238,7 +237,8 @@ class CommandTemplateManager {
             - Rate limiting
 
             Format: {{format}} (OpenAPI/Markdown/etc)
-            """
+            """,
+            category: .documentation
         ),
 
         // Code Optimization Template
@@ -246,7 +246,6 @@ class CommandTemplateManager {
             name: "Optimize Performance",
             description: "Suggest performance optimizations",
             filename: "optimize.md",
-            category: .code,
             content: """
             # Performance Optimization
 
@@ -266,7 +265,8 @@ class CommandTemplateManager {
 
             Target: {{target}} (speed/memory/both)
             Language: {{language}}
-            """
+            """,
+            category: .code
         ),
 
         // README Generator Template
@@ -274,7 +274,6 @@ class CommandTemplateManager {
             name: "Generate README",
             description: "Create comprehensive README files",
             filename: "readme-generator.md",
-            category: .documentation,
             content: """
             # Generate README
 
@@ -295,7 +294,8 @@ class CommandTemplateManager {
             - Contact/Support
 
             Tone: {{tone}} (professional/casual/technical)
-            """
+            """,
+            category: .documentation
         )
     ]
 
