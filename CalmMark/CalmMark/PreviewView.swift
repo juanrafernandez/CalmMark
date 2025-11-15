@@ -59,12 +59,14 @@ struct PreviewView: View {
         let newHTML = MarkdownRenderer.renderToHTML(markdown, settings: settings)
         html = newHTML
 
-        LogManager.shared.log(.debug, "HTML generado (\(newHTML.count) caracteres)", context: "Preview")
+        // Log primeros 200 caracteres del HTML para debug
+        let preview = String(newHTML.prefix(200))
+        LogManager.shared.log(.debug, "HTML generado (\(newHTML.count) caracteres). Inicio: \(preview)...", context: "Preview")
 
         // Force reload if webView is already created
         DispatchQueue.main.async {
             if let webView = webView {
-                LogManager.shared.log(.info, "Cargando HTML en WebView", context: "Preview")
+                LogManager.shared.log(.info, "Cargando HTML en WebView con loadHTMLString", context: "Preview")
                 webView.loadHTMLString(newHTML, baseURL: nil)
             } else {
                 LogManager.shared.log(.warning, "WebView aún no está inicializado", context: "Preview")
@@ -81,16 +83,30 @@ struct WebViewWrapper: NSViewRepresentable {
         LogManager.shared.log(.info, "Creando WKWebView", context: "WebView")
 
         let config = WKWebViewConfiguration()
-        config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
 
-        // Enable JavaScript (for potential future enhancements)
+        // Enable JavaScript
         config.preferences.javaScriptEnabled = true
+
+        // Allow local content
+        if #available(macOS 10.15, *) {
+            config.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
+
+        // Set user agent to avoid compatibility issues
+        config.applicationNameForUserAgent = "CalmMark"
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
 
-        // Configure appearance
-        webView.setValue(false, forKey: "drawsBackground")
+        // Configure appearance - try without setValue
+        #if DEBUG
+        LogManager.shared.log(.debug, "Configurando apariencia del WebView", context: "WebView")
+        #endif
+
+        // Make background transparent
+        if let wkWebView = webView as? WKWebView {
+            wkWebView.setValue(false, forKey: "drawsBackground")
+        }
 
         // Allow magnification
         webView.allowsMagnification = true
@@ -106,6 +122,8 @@ struct WebViewWrapper: NSViewRepresentable {
             if !html.isEmpty {
                 LogManager.shared.log(.info, "Cargando HTML inicial (\(html.count) caracteres)", context: "WebView")
                 webView.loadHTMLString(html, baseURL: nil)
+            } else {
+                LogManager.shared.log(.debug, "No hay HTML inicial para cargar", context: "WebView")
             }
         }
 
@@ -135,19 +153,34 @@ struct WebViewWrapper: NSViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            LogManager.shared.log(.success, "Preview cargado exitosamente", context: "WebView")
+            LogManager.shared.log(.success, "✅ Preview cargado exitosamente", context: "WebView")
+
+            // Verificar que realmente hay contenido
+            webView.evaluateJavaScript("document.body.innerHTML.length") { result, error in
+                if let length = result as? Int {
+                    LogManager.shared.log(.info, "Contenido HTML en body: \(length) caracteres", context: "WebView")
+                }
+            }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            LogManager.shared.log(.error, "Error al cargar preview: \(error.localizedDescription)", context: "WebView")
+            LogManager.shared.log(.error, "❌ Error al cargar preview: \(error.localizedDescription)", context: "WebView")
         }
 
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
-            LogManager.shared.log(.error, "Error provisional al cargar preview: \(error.localizedDescription)", context: "WebView")
+            LogManager.shared.log(.error, "❌ Error provisional al cargar preview: \(error.localizedDescription)", context: "WebView")
         }
 
         func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
-            LogManager.shared.log(.debug, "Iniciando carga de preview", context: "WebView")
+            LogManager.shared.log(.debug, "🔄 Iniciando carga provisional de preview", context: "WebView")
+        }
+
+        func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+            LogManager.shared.log(.debug, "📄 WebView committed navigation", context: "WebView")
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            LogManager.shared.log(.error, "💥 WebView process terminado inesperadamente", context: "WebView")
         }
     }
 }
