@@ -159,6 +159,16 @@ struct ProjectContentView: View {
                 showSidebar.toggle()
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .togglePreviewPanel)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showPreviewPanel.toggle()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .toggleLogPanel)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showLogPanel.toggle()
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openFolder)) { _ in
             fileManager.openFolder()
         }
@@ -256,7 +266,7 @@ struct ProjectToolbarView: View {
                     .foregroundColor(showPreviewPanel ? .accentColor : .secondary)
             }
             .buttonStyle(.plain)
-            .help("Toggle Preview Panel")
+            .help("Toggle Preview Panel (⌥⌘9)")
 
             // Log panel toggle
             Button(action: {
@@ -276,7 +286,7 @@ struct ProjectToolbarView: View {
                 }
             }
             .buttonStyle(.plain)
-            .help("Toggle Log Panel")
+            .help("Toggle Log Panel (⇧⌘L)")
 
             Divider()
                 .frame(height: 16)

@@ -55,6 +55,16 @@ struct CalmMarkCommands: Commands {
             }
             .keyboardShortcut("0", modifiers: [.command])
 
+            Button("Toggle Preview Panel") {
+                NotificationCenter.default.post(name: .togglePreviewPanel, object: nil)
+            }
+            .keyboardShortcut("9", modifiers: [.command, .option])
+
+            Button("Toggle Log Panel") {
+                NotificationCenter.default.post(name: .toggleLogPanel, object: nil)
+            }
+            .keyboardShortcut("L", modifiers: [.command, .shift])
+
             Divider()
 
             Button("Editor Only") {
@@ -176,4 +186,6 @@ extension Notification.Name {
     static let closeAllTabs = Notification.Name("closeAllTabs")
     static let applyFormat = Notification.Name("applyFormat")
     static let openDroppedFile = Notification.Name("openDroppedFile")
+    static let togglePreviewPanel = Notification.Name("togglePreviewPanel")
+    static let toggleLogPanel = Notification.Name("toggleLogPanel")
 }

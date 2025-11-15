@@ -18,18 +18,23 @@ struct PreviewView: View {
     var body: some View {
         WebViewWrapper(html: $html, webView: $webView)
             .onChange(of: markdown) { oldValue, newValue in
+                LogManager.shared.log(.debug, "Markdown cambió: \(oldValue.count) -> \(newValue.count) caracteres", context: "Preview")
                 debouncedUpdate(newValue)
             }
             .onChange(of: settings.appearanceMode) { _, _ in
+                LogManager.shared.log(.info, "Cambió modo de apariencia", context: "Preview")
                 updateHTML(markdown)
             }
             .onChange(of: settings.previewFontSize) { _, _ in
+                LogManager.shared.log(.info, "Cambió tamaño de fuente", context: "Preview")
                 updateHTML(markdown)
             }
             .onChange(of: settings.maxPreviewWidth) { _, _ in
+                LogManager.shared.log(.info, "Cambió ancho máximo", context: "Preview")
                 updateHTML(markdown)
             }
             .onAppear {
+                LogManager.shared.log(.info, "PreviewView apareció con markdown de \(markdown.count) caracteres", context: "Preview")
                 updateHTML(markdown)
             }
     }
@@ -73,6 +78,8 @@ struct WebViewWrapper: NSViewRepresentable {
     @Binding var webView: WKWebView?
 
     func makeNSView(context: Context) -> WKWebView {
+        LogManager.shared.log(.info, "Creando WKWebView", context: "WebView")
+
         let config = WKWebViewConfiguration()
         config.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
 
@@ -88,9 +95,18 @@ struct WebViewWrapper: NSViewRepresentable {
         // Allow magnification
         webView.allowsMagnification = true
 
+        LogManager.shared.log(.success, "WKWebView creado correctamente", context: "WebView")
+
         // Store reference
         DispatchQueue.main.async {
             self.webView = webView
+            LogManager.shared.log(.info, "Referencia de WebView almacenada", context: "WebView")
+
+            // Intentar cargar HTML inicial si ya existe
+            if !html.isEmpty {
+                LogManager.shared.log(.info, "Cargando HTML inicial (\(html.count) caracteres)", context: "WebView")
+                webView.loadHTMLString(html, baseURL: nil)
+            }
         }
 
         return webView
@@ -98,9 +114,15 @@ struct WebViewWrapper: NSViewRepresentable {
 
     func updateNSView(_ webView: WKWebView, context: Context) {
         // Only reload if content actually changed and webView is not loading
-        guard !html.isEmpty else { return }
+        guard !html.isEmpty else {
+            LogManager.shared.log(.debug, "updateNSView: HTML vacío, saltando actualización", context: "WebView")
+            return
+        }
+
+        LogManager.shared.log(.debug, "updateNSView: Actualizando WebView con HTML (\(html.count) caracteres)", context: "WebView")
 
         if webView.isLoading {
+            LogManager.shared.log(.debug, "WebView está cargando, deteniendo carga anterior", context: "WebView")
             webView.stopLoading()
         }
 
