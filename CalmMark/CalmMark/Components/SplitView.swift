@@ -158,16 +158,24 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
 
         print("📊 [HSplitView3] Added \(splitView.arrangedSubviews.count) subviews to split view")
 
-        // IMPORTANTE: Establecer posiciones iniciales DESPUÉS de agregar las vistas
-        // Esto asegura que los paneles tengan el tamaño correcto al inicio
+        // IMPORTANTE: Establecer isHidden INMEDIATAMENTE para evitar race conditions
+        if !showLeading {
+            leadingController.view.isHidden = true
+            print("👁️ [HSplitView3] Set leading panel hidden=true initially")
+        }
+        if !showTrailing {
+            trailingController.view.isHidden = true
+            print("👁️ [HSplitView3] Set trailing panel hidden=true initially")
+        }
+
+        // IMPORTANTE: Establecer posiciones de divisores DESPUÉS de que el split view tenga bounds válidos
         DispatchQueue.main.async {
             if self.showLeading {
                 splitView.setPosition(self.leadingWidth, ofDividerAt: 0)
                 print("📐 [HSplitView3] Set leading panel position to \(self.leadingWidth)")
             } else {
                 splitView.setPosition(0, ofDividerAt: 0)
-                leadingController.view.isHidden = true
-                print("👁️ [HSplitView3] Collapsed leading panel")
+                print("📐 [HSplitView3] Collapsed leading divider to 0")
             }
 
             if self.showTrailing {
@@ -177,8 +185,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
             } else {
                 let totalWidth = splitView.bounds.width
                 splitView.setPosition(totalWidth, ofDividerAt: 1)
-                trailingController.view.isHidden = true
-                print("👁️ [HSplitView3] Collapsed trailing panel")
+                print("📐 [HSplitView3] Collapsed trailing divider to \(totalWidth)")
             }
         }
 
