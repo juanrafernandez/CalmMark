@@ -171,6 +171,7 @@ struct LogEntryRow: View {
                 .font(.system(size: 10, design: .monospaced))
                 .foregroundColor(.secondary)
                 .frame(width: 80, alignment: .leading)
+                .textSelection(.enabled)
 
             // Level
             Text(levelIcon(entry.level))
@@ -181,6 +182,7 @@ struct LogEntryRow: View {
                 .font(.system(size: 10, weight: .medium, design: .monospaced))
                 .foregroundColor(contextColor(entry.level))
                 .frame(minWidth: 80, alignment: .leading)
+                .textSelection(.enabled)
 
             // Message
             Text(entry.message)
@@ -188,6 +190,19 @@ struct LogEntryRow: View {
                 .foregroundColor(messageColor(entry.level))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .textSelection(.enabled)
+
+            // Copy button
+            Button(action: {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(entry.displayText, forType: .string)
+            }) {
+                Image(systemName: "doc.on.doc")
+                    .font(.system(size: 8))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .help("Copy log entry")
+            .opacity(0.5)
         }
         .padding(.vertical, 2)
         .padding(.horizontal, 4)
