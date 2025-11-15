@@ -10,7 +10,7 @@
 		35782CF12EC8EDAD00427117 /* MarkdownFormattingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */; };
 		35782CF32EC8F5D600427117 /* LogPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF22EC8F5D600427117 /* LogPanelView.swift */; };
 		35782CF52EC8F5DD00427117 /* LogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF42EC8F5DD00427117 /* LogManager.swift */; };
-		35782CF82EC9234E00427117 /* DragDivider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF62EC9234E00427117 /* DragDivider.swift */; };
+		35782CFA2EC930E900427117 /* SplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF92EC930E900427117 /* SplitView.swift */; };
 		AA0001001A000001 /* CalmMarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001001A000002 /* CalmMarkApp.swift */; };
 		AA0001011A000001 /* CalmMarkDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001011A000002 /* CalmMarkDocument.swift */; };
 		AA0001021A000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001021A000002 /* ContentView.swift */; };
@@ -37,7 +37,7 @@
 		35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownFormattingToolbar.swift; sourceTree = "<group>"; };
 		35782CF22EC8F5D600427117 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPanelView.swift; sourceTree = "<group>"; };
 		35782CF42EC8F5DD00427117 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
-		35782CF62EC9234E00427117 /* DragDivider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DragDivider.swift; sourceTree = "<group>"; };
+		35782CF92EC930E900427117 /* SplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitView.swift; sourceTree = "<group>"; };
 		AA0000001A000001 /* CalmMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalmMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkApp.swift; sourceTree = "<group>"; };
 		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkDocument.swift; sourceTree = "<group>"; };
@@ -77,7 +77,7 @@
 		35782CF72EC9234E00427117 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				35782CF62EC9234E00427117 /* DragDivider.swift */,
+				35782CF92EC930E900427117 /* SplitView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -215,12 +215,12 @@
 				35782CF52EC8F5DD00427117 /* LogManager.swift in Sources */,
 				AA0001011A000001 /* CalmMarkDocument.swift in Sources */,
 				AA0001001A000001 /* CalmMarkApp.swift in Sources */,
+				35782CFA2EC930E900427117 /* SplitView.swift in Sources */,
 				AA0001031A000001 /* EditorView.swift in Sources */,
 				AA0001041A000001 /* PreviewView.swift in Sources */,
 				AA0001051A000001 /* PreferencesView.swift in Sources */,
 				AA0001101A000001 /* ExportView.swift in Sources */,
 				AA0001061A000001 /* AppSettings.swift in Sources */,
-				35782CF82EC9234E00427117 /* DragDivider.swift in Sources */,
 				AA0001111A000001 /* FileSystemManager.swift in Sources */,
 				AA0001121A000001 /* FileNavigatorView.swift in Sources */,
 				AA0001131A000001 /* TabManager.swift in Sources */,
