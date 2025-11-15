@@ -165,9 +165,8 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        // Handle view updates (show/hide panels)
-        context.coordinator.leadingWidth = leadingWidth
-        context.coordinator.trailingWidth = trailingWidth
+        // NSSplitView handles its own state
+        // Panel visibility is handled by conditional Group views in SwiftUI
     }
 
     func makeCoordinator() -> Coordinator {
@@ -206,23 +205,9 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         }
 
         func splitViewDidResizeSubviews(_ notification: Notification) {
-            guard let splitView = notification.object as? NSSplitView else { return }
-
-            // Update leading width
-            if splitView.arrangedSubviews.count > 0 {
-                let newLeadingWidth = splitView.arrangedSubviews[0].frame.width
-                if abs(newLeadingWidth - leadingWidth) > 1 {
-                    leadingWidth = newLeadingWidth
-                }
-            }
-
-            // Update trailing width
-            if splitView.arrangedSubviews.count > 2 {
-                let newTrailingWidth = splitView.arrangedSubviews.last!.frame.width
-                if abs(newTrailingWidth - trailingWidth) > 1 {
-                    trailingWidth = newTrailingWidth
-                }
-            }
+            // NSSplitView handles all resizing internally
+            // We don't need to sync back to SwiftUI state during dragging
+            // This prevents "Modifying state during view update" warnings
         }
     }
 }
@@ -275,12 +260,8 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        context.coordinator.bottomHeight = bottomHeight
-
-        // Handle showing/hiding bottom panel
-        if bottom == nil && splitView.arrangedSubviews.count > 1 {
-            splitView.arrangedSubviews.last?.removeFromSuperview()
-        }
+        // NSSplitView handles its own state
+        // Panel visibility is handled by conditional Group views in SwiftUI
     }
 
     func makeCoordinator() -> Coordinator {
@@ -312,14 +293,9 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         }
 
         func splitViewDidResizeSubviews(_ notification: Notification) {
-            guard let splitView = notification.object as? NSSplitView else { return }
-
-            if splitView.arrangedSubviews.count > 1 {
-                let newBottomHeight = splitView.arrangedSubviews.last!.frame.height
-                if abs(newBottomHeight - bottomHeight) > 1 {
-                    bottomHeight = newBottomHeight
-                }
-            }
+            // NSSplitView handles all resizing internally
+            // We don't need to sync back to SwiftUI state during dragging
+            // This prevents "Modifying state during view update" warnings
         }
     }
 }
