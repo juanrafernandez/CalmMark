@@ -131,6 +131,8 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     }
 
     func makeNSView(context: Context) -> NSSplitView {
+        print("🔧 [HSplitView3] Creating split view - showLeading: \(showLeading), showTrailing: \(showTrailing)")
+
         let splitView = NSSplitView()
         splitView.isVertical = true
         splitView.dividerStyle = .thin
@@ -154,26 +156,55 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         splitView.addArrangedSubview(centerController.view)
         splitView.addArrangedSubview(trailingController.view)
 
+        print("📊 [HSplitView3] Added \(splitView.arrangedSubviews.count) subviews to split view")
+
         // Apply initial visibility
         splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 0)
         splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 2)
 
         if !showLeading {
             leadingController.view.isHidden = true
+            print("👁️ [HSplitView3] Hiding leading panel")
         }
         if !showTrailing {
             trailingController.view.isHidden = true
+            print("👁️ [HSplitView3] Hiding trailing panel")
         }
 
         return splitView
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        // Update visibility of panels
+        // Update visibility of panels using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 3 else { return }
 
-        splitView.arrangedSubviews[0].isHidden = !showLeading
-        splitView.arrangedSubviews[2].isHidden = !showTrailing
+        // Leading panel (sidebar)
+        let leadingView = splitView.arrangedSubviews[0]
+        let shouldCollapseLeading = !showLeading
+        if shouldCollapseLeading != leadingView.isHidden {
+            if shouldCollapseLeading {
+                leadingView.isHidden = true
+                splitView.setPosition(0, ofDividerAt: 0)
+            } else {
+                leadingView.isHidden = false
+                splitView.setPosition(leadingWidth, ofDividerAt: 0)
+            }
+        }
+
+        // Trailing panel (preview)
+        let trailingView = splitView.arrangedSubviews[2]
+        let shouldCollapseTrailing = !showTrailing
+        if shouldCollapseTrailing != trailingView.isHidden {
+            if shouldCollapseTrailing {
+                trailingView.isHidden = true
+                let totalWidth = splitView.bounds.width
+                splitView.setPosition(totalWidth, ofDividerAt: 1)
+            } else {
+                trailingView.isHidden = false
+                let totalWidth = splitView.bounds.width
+                splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: 1)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -273,10 +304,22 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        // Update visibility of bottom panel
+        // Update visibility of bottom panel using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 2 else { return }
 
-        splitView.arrangedSubviews[1].isHidden = !showBottom
+        let bottomView = splitView.arrangedSubviews[1]
+        let shouldCollapseBottom = !showBottom
+        if shouldCollapseBottom != bottomView.isHidden {
+            if shouldCollapseBottom {
+                bottomView.isHidden = true
+                let totalHeight = splitView.bounds.height
+                splitView.setPosition(totalHeight, ofDividerAt: 0)
+            } else {
+                bottomView.isHidden = false
+                let totalHeight = splitView.bounds.height
+                splitView.setPosition(totalHeight - bottomHeight, ofDividerAt: 0)
+            }
+        }
     }
 
     func makeCoordinator() -> Coordinator {
