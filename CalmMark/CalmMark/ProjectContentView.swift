@@ -24,6 +24,9 @@ struct ProjectContentView: View {
     @State private var exportType: ExportType = .html
     @State private var showCommandTemplates = false
 
+    // CRITICAL: Force SwiftUI to redraw when activeFile changes
+    @State private var updateTrigger: Int = 0
+
     var body: some View {
         VStack(spacing: 0) {
             // Top toolbar
@@ -67,7 +70,7 @@ struct ProjectContentView: View {
                         trailingWidth: $previewPanelWidth,
                         showLeading: showSidebar,
                         showTrailing: showPreviewPanel && tabManager.activeFile != nil,
-                        contentKey: tabManager.activeFile?.url.absoluteString ?? "no-file"
+                        contentKey: "\(tabManager.activeFile?.url.absoluteString ?? "no-file")_\(updateTrigger)"
                     ) {
                         // Leading: Sidebar
                         FileNavigatorView(
@@ -236,6 +239,9 @@ struct ProjectContentView: View {
             } else {
                 print("🔄 [ProjectContentView] Active file cleared")
             }
+            // CRITICAL: Force SwiftUI to redraw by changing @State
+            updateTrigger += 1
+            print("🔄 [ProjectContentView] Update trigger incremented to: \(updateTrigger)")
         }
     }
 
