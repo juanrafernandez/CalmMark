@@ -89,11 +89,6 @@ struct WebViewWrapper: NSViewRepresentable {
         config.preferences.setValue(false, forKey: "canvasUsesAcceleratedDrawing")
         config.preferences.setValue(false, forKey: "webGLEnabled")
 
-        // Disable GPU process to avoid Metal issues
-        if #available(macOS 11.0, *) {
-            config.preferences.setValue(false, forKey: "useGPUProcessForDOMRendering")
-        }
-
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
 
