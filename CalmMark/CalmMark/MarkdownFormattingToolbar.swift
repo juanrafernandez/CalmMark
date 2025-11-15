@@ -275,11 +275,10 @@ extension NSTextView {
         }
 
         // Apply the replacement
-        if textStorage.replaceCharacters(in: selectedRange, with: replacement) {
-            self.setSelectedRange(newSelectionRange)
+        textStorage.replaceCharacters(in: selectedRange, with: replacement)
+        self.setSelectedRange(newSelectionRange)
 
-            // Trigger text change notification to update bindings
-            self.didChangeText()
-        }
+        // Trigger text change notification to update bindings
+        self.didChangeText()
     }
 }
