@@ -89,9 +89,6 @@ struct WebViewWrapper: NSViewRepresentable {
         config.preferences.setValue(false, forKey: "canvasUsesAcceleratedDrawing")
         config.preferences.setValue(false, forKey: "webGLEnabled")
 
-        // Try to disable GPU process completely (private API)
-        config.setValue(false, forKey: "drawsBackground")
-
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
 
@@ -101,11 +98,6 @@ struct WebViewWrapper: NSViewRepresentable {
         // Create webView
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = context.coordinator
-
-        // Try to disable background drawing at view level
-        if webView.responds(to: Selector(("_setDrawsBackground:"))) {
-            webView.setValue(false, forKey: "_drawsBackground")
-        }
 
         // Don't allow magnification
         webView.allowsMagnification = false
