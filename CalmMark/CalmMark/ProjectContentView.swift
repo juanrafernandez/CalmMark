@@ -55,116 +55,92 @@ struct ProjectContentView: View {
                 Divider()
             }
 
-            // Main content area
-            GeometryReader { geometry in
-                VStack(spacing: 0) {
-                    // Top: Sidebar + Editor + Preview
-                    HStack(spacing: 0) {
-                        // Sidebar izquierdo
-                        if showSidebar {
-                            FileNavigatorView(
-                                fileManager: fileManager,
-                                openFiles: $tabManager.openFiles,
-                                activeFile: $tabManager.activeFile
-                            )
-                            .frame(width: sidebarWidth)
-                            .animation(.none, value: sidebarWidth)  // No animation for smooth dragging
-
-                            DragDivider(
-                                orientation: .vertical,
-                                offset: $sidebarWidth,
-                                minOffset: 150,
-                                maxOffset: min(500, geometry.size.width * 0.4),
-                                invertDirection: false  // Leading panel: drag right = increase
-                            )
-                        }
-
-                        // Editor central
-                        if let activeFile = tabManager.activeFile {
-                            EditorView(text: Binding(
-                                get: { activeFile.content },
-                                set: { newValue in
-                                    activeFile.content = newValue
-                                    activeFile.isDirty = true
-                                }
-                            ), settings: settings)
-                        } else {
-                            // Welcome/Empty state
-                            WelcomeView(
-                                fileManager: fileManager,
-                                onOpenFolder: {
-                                    fileManager.openFolder()
-                                },
-                                onCreateCommand: {
-                                    showCommandTemplates = true
-                                }
-                            )
-                        }
-
-                        // Panel de Preview derecho
-                        if showPreviewPanel, let activeFile = tabManager.activeFile {
-                            DragDivider(
-                                orientation: .vertical,
-                                offset: $previewPanelWidth,
-                                minOffset: 200,
-                                maxOffset: min(800, geometry.size.width * 0.5),
-                                invertDirection: true  // Trailing panel: drag left = increase
-                            )
-
-                            VStack(spacing: 0) {
-                                // Header del panel de preview
-                                HStack {
-                                    Image(systemName: "doc.richtext")
-                                        .font(.system(size: 12))
-                                    Text("Preview")
-                                        .font(.system(size: 12, weight: .semibold))
-
-                                    Text("(\(activeFile.content.count) chars)")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
-
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation {
-                                            showPreviewPanel = false
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(NSColor.controlBackgroundColor))
-
-                                Divider()
-
-                                PreviewView(markdown: activeFile.content, settings: settings)
-                                    .onAppear {
-                                        LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
-                                    }
-                            }
-                            .frame(width: previewPanelWidth)
-                            .animation(.none, value: previewPanelWidth)  // No animation for smooth dragging
-                        }
-                    }
-
-                    // Panel de Logs inferior
-                    if showLogPanel {
-                        DragDivider(
-                            orientation: .horizontal,
-                            offset: $logPanelHeight,
-                            minOffset: 100,
-                            maxOffset: min(600, geometry.size.height * 0.6),
-                            invertDirection: true  // Bottom panel: drag up = increase
+            // Main content area with native NSSplitView for Xcode-level performance
+            VSplitView2(bottomHeight: $logPanelHeight) {
+                // Top: Horizontal split (Sidebar + Editor + Preview)
+                HSplitView3(
+                    leadingWidth: $sidebarWidth,
+                    trailingWidth: $previewPanelWidth
+                ) {
+                    // Leading: Sidebar (optional)
+                    if showSidebar {
+                        FileNavigatorView(
+                            fileManager: fileManager,
+                            openFiles: $tabManager.openFiles,
+                            activeFile: $tabManager.activeFile
                         )
-
-                        LogPanelView()
-                            .frame(height: logPanelHeight)
-                            .animation(.none, value: logPanelHeight)  // No animation for smooth dragging
+                    } else {
+                        nil as EmptyView?
                     }
+                } center: {
+                    // Center: Editor (always visible)
+                    if let activeFile = tabManager.activeFile {
+                        EditorView(text: Binding(
+                            get: { activeFile.content },
+                            set: { newValue in
+                                activeFile.content = newValue
+                                activeFile.isDirty = true
+                            }
+                        ), settings: settings)
+                    } else {
+                        WelcomeView(
+                            fileManager: fileManager,
+                            onOpenFolder: {
+                                fileManager.openFolder()
+                            },
+                            onCreateCommand: {
+                                showCommandTemplates = true
+                            }
+                        )
+                    }
+                } trailing: {
+                    // Trailing: Preview (optional)
+                    if showPreviewPanel, let activeFile = tabManager.activeFile {
+                        VStack(spacing: 0) {
+                            // Header del panel de preview
+                            HStack {
+                                Image(systemName: "doc.richtext")
+                                    .font(.system(size: 12))
+                                Text("Preview")
+                                    .font(.system(size: 12, weight: .semibold))
+
+                                Text("(\(activeFile.content.count) chars)")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
+
+                                Spacer()
+                                Button(action: {
+                                    withAnimation {
+                                        showPreviewPanel = false
+                                    }
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(NSColor.controlBackgroundColor))
+
+                            Divider()
+
+                            PreviewView(markdown: activeFile.content, settings: settings)
+                                .onAppear {
+                                    LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
+                                }
+                        }
+                    } else {
+                        nil as EmptyView?
+                    }
+                }
+            } bottom: {
+                // Bottom: Log panel (optional)
+                if showLogPanel {
+                    LogPanelView()
+                } else {
+                    nil as EmptyView?
                 }
             }
         }
