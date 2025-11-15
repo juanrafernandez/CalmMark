@@ -92,10 +92,6 @@ struct WebViewWrapper: NSViewRepresentable {
         // Try to disable GPU process completely (private API)
         config.setValue(false, forKey: "drawsBackground")
 
-        // Disable media capabilities that might trigger GPU
-        config.allowsInlineMediaPlayback = false
-        config.mediaTypesRequiringUserActionForPlayback = .all
-
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
 
