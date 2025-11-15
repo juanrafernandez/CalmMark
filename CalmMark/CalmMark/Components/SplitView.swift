@@ -102,9 +102,12 @@ struct SplitView<Content: View>: NSViewRepresentable {
 
 /// Three-pane horizontal split view (sidebar, editor, preview)
 struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresentable {
-    let leading: Leading?
+    let leading: Leading
     let center: Center
-    let trailing: Trailing?
+    let trailing: Trailing
+
+    let showLeading: Bool
+    let showTrailing: Bool
 
     @Binding var leadingWidth: CGFloat
     @Binding var trailingWidth: CGFloat
@@ -112,12 +115,16 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     init(
         leadingWidth: Binding<CGFloat>,
         trailingWidth: Binding<CGFloat>,
-        @ViewBuilder leading: () -> Leading?,
+        showLeading: Bool = true,
+        showTrailing: Bool = true,
+        @ViewBuilder leading: () -> Leading,
         @ViewBuilder center: () -> Center,
-        @ViewBuilder trailing: () -> Trailing?
+        @ViewBuilder trailing: () -> Trailing
     ) {
         self._leadingWidth = leadingWidth
         self._trailingWidth = trailingWidth
+        self.showLeading = showLeading
+        self.showTrailing = showTrailing
         self.leading = leading()
         self.center = center()
         self.trailing = trailing()
@@ -129,14 +136,44 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         splitView.dividerStyle = .thin
         splitView.delegate = context.coordinator
 
-        context.coordinator.splitView = splitView
-        context.coordinator.updatePanes(leading: leading, center: center, trailing: trailing)
+        // Create all three panes (always)
+        let leadingController = NSHostingController(rootView: leading)
+        let centerController = NSHostingController(rootView: center)
+        let trailingController = NSHostingController(rootView: trailing)
+
+        context.coordinator.leadingController = leadingController
+        context.coordinator.centerController = centerController
+        context.coordinator.trailingController = trailingController
+
+        leadingController.view.translatesAutoresizingMaskIntoConstraints = false
+        centerController.view.translatesAutoresizingMaskIntoConstraints = false
+        centerController.view.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        trailingController.view.translatesAutoresizingMaskIntoConstraints = false
+
+        splitView.addArrangedSubview(leadingController.view)
+        splitView.addArrangedSubview(centerController.view)
+        splitView.addArrangedSubview(trailingController.view)
+
+        // Apply initial visibility
+        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 0)
+        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 2)
+
+        if !showLeading {
+            leadingController.view.isHidden = true
+        }
+        if !showTrailing {
+            trailingController.view.isHidden = true
+        }
 
         return splitView
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        context.coordinator.updatePanes(leading: leading, center: center, trailing: trailing)
+        // Update visibility of panels
+        guard splitView.arrangedSubviews.count == 3 else { return }
+
+        splitView.arrangedSubviews[0].isHidden = !showLeading
+        splitView.arrangedSubviews[2].isHidden = !showTrailing
     }
 
     func makeCoordinator() -> Coordinator {
@@ -146,56 +183,13 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var leadingWidth: CGFloat
         @Binding var trailingWidth: CGFloat
-        var splitView: NSSplitView?
-        var leadingController: NSHostingController<AnyView>?
-        var centerController: NSHostingController<AnyView>?
-        var trailingController: NSHostingController<AnyView>?
+        var leadingController: NSHostingController<Leading>?
+        var centerController: NSHostingController<Center>?
+        var trailingController: NSHostingController<Trailing>?
 
         init(leadingWidth: Binding<CGFloat>, trailingWidth: Binding<CGFloat>) {
             self._leadingWidth = leadingWidth
             self._trailingWidth = trailingWidth
-        }
-
-        func updatePanes<L: View, C: View, T: View>(leading: L?, center: C, trailing: T?) {
-            guard let splitView = splitView else { return }
-
-            // Remove all existing arranged subviews
-            splitView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-
-            // Add leading pane if exists
-            if let leading = leading {
-                if leadingController == nil {
-                    leadingController = NSHostingController(rootView: AnyView(leading))
-                } else {
-                    leadingController?.rootView = AnyView(leading)
-                }
-                let view = leadingController!.view
-                view.translatesAutoresizingMaskIntoConstraints = false
-                splitView.addArrangedSubview(view)
-            }
-
-            // Add center pane (always exists)
-            if centerController == nil {
-                centerController = NSHostingController(rootView: AnyView(center))
-            } else {
-                centerController?.rootView = AnyView(center)
-            }
-            let centerView = centerController!.view
-            centerView.translatesAutoresizingMaskIntoConstraints = false
-            centerView.setContentHuggingPriority(.defaultLow, for: .horizontal)
-            splitView.addArrangedSubview(centerView)
-
-            // Add trailing pane if exists
-            if let trailing = trailing {
-                if trailingController == nil {
-                    trailingController = NSHostingController(rootView: AnyView(trailing))
-                } else {
-                    trailingController?.rootView = AnyView(trailing)
-                }
-                let view = trailingController!.view
-                view.translatesAutoresizingMaskIntoConstraints = false
-                splitView.addArrangedSubview(view)
-            }
         }
 
         func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
@@ -230,16 +224,20 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
 /// Vertical split view for top/bottom panels (main content / debug panel)
 struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
     let top: Top
-    let bottom: Bottom?
+    let bottom: Bottom
+
+    let showBottom: Bool
 
     @Binding var bottomHeight: CGFloat
 
     init(
         bottomHeight: Binding<CGFloat>,
+        showBottom: Bool = true,
         @ViewBuilder top: () -> Top,
-        @ViewBuilder bottom: () -> Bottom?
+        @ViewBuilder bottom: () -> Bottom
     ) {
         self._bottomHeight = bottomHeight
+        self.showBottom = showBottom
         self.top = top()
         self.bottom = bottom()
     }
@@ -250,14 +248,35 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         splitView.dividerStyle = .thin
         splitView.delegate = context.coordinator
 
-        context.coordinator.splitView = splitView
-        context.coordinator.updatePanes(top: top, bottom: bottom)
+        // Create both panes (always)
+        let topController = NSHostingController(rootView: top)
+        let bottomController = NSHostingController(rootView: bottom)
+
+        context.coordinator.topController = topController
+        context.coordinator.bottomController = bottomController
+
+        topController.view.translatesAutoresizingMaskIntoConstraints = false
+        topController.view.setContentHuggingPriority(.defaultLow, for: .vertical)
+        bottomController.view.translatesAutoresizingMaskIntoConstraints = false
+
+        splitView.addArrangedSubview(topController.view)
+        splitView.addArrangedSubview(bottomController.view)
+
+        // Apply initial visibility
+        splitView.setHoldingPriority(NSLayoutConstraint.Priority(251), forSubviewAt: 1)
+
+        if !showBottom {
+            bottomController.view.isHidden = true
+        }
 
         return splitView
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-        context.coordinator.updatePanes(top: top, bottom: bottom)
+        // Update visibility of bottom panel
+        guard splitView.arrangedSubviews.count == 2 else { return }
+
+        splitView.arrangedSubviews[1].isHidden = !showBottom
     }
 
     func makeCoordinator() -> Coordinator {
@@ -266,42 +285,11 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
 
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var bottomHeight: CGFloat
-        var splitView: NSSplitView?
-        var topController: NSHostingController<AnyView>?
-        var bottomController: NSHostingController<AnyView>?
+        var topController: NSHostingController<Top>?
+        var bottomController: NSHostingController<Bottom>?
 
         init(bottomHeight: Binding<CGFloat>) {
             self._bottomHeight = bottomHeight
-        }
-
-        func updatePanes<T: View, B: View>(top: T, bottom: B?) {
-            guard let splitView = splitView else { return }
-
-            // Remove all existing arranged subviews
-            splitView.arrangedSubviews.forEach { $0.removeFromSuperview() }
-
-            // Add top pane (always exists)
-            if topController == nil {
-                topController = NSHostingController(rootView: AnyView(top))
-            } else {
-                topController?.rootView = AnyView(top)
-            }
-            let topView = topController!.view
-            topView.translatesAutoresizingMaskIntoConstraints = false
-            topView.setContentHuggingPriority(.defaultLow, for: .vertical)
-            splitView.addArrangedSubview(topView)
-
-            // Add bottom pane if exists
-            if let bottom = bottom {
-                if bottomController == nil {
-                    bottomController = NSHostingController(rootView: AnyView(bottom))
-                } else {
-                    bottomController?.rootView = AnyView(bottom)
-                }
-                let bottomView = bottomController!.view
-                bottomView.translatesAutoresizingMaskIntoConstraints = false
-                splitView.addArrangedSubview(bottomView)
-            }
         }
 
         func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {

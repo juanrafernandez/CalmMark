@@ -57,20 +57,23 @@ struct ProjectContentView: View {
 
             // Main content area with native NSSplitView for Xcode-level performance
             GeometryReader { geometry in
-                VSplitView2(bottomHeight: $logPanelHeight) {
+                VSplitView2(
+                    bottomHeight: $logPanelHeight,
+                    showBottom: showLogPanel
+                ) {
                     // Top: Horizontal split (Sidebar + Editor + Preview)
                     HSplitView3(
                         leadingWidth: $sidebarWidth,
-                        trailingWidth: $previewPanelWidth
+                        trailingWidth: $previewPanelWidth,
+                        showLeading: showSidebar,
+                        showTrailing: showPreviewPanel && tabManager.activeFile != nil
                     ) {
-                        // Leading: Sidebar (optional)
-                        showSidebar ? AnyView(
-                            FileNavigatorView(
-                                fileManager: fileManager,
-                                openFiles: $tabManager.openFiles,
-                                activeFile: $tabManager.activeFile
-                            )
-                        ) : nil
+                        // Leading: Sidebar
+                        FileNavigatorView(
+                            fileManager: fileManager,
+                            openFiles: $tabManager.openFiles,
+                            activeFile: $tabManager.activeFile
+                        )
                     } center: {
                         // Center: Editor (always visible)
                         if let activeFile = tabManager.activeFile {
@@ -93,50 +96,48 @@ struct ProjectContentView: View {
                             )
                         }
                     } trailing: {
-                        // Trailing: Preview (optional)
-                        (showPreviewPanel && tabManager.activeFile != nil) ? AnyView(
-                            VStack(spacing: 0) {
-                                // Header del panel de preview
-                                HStack {
-                                    Image(systemName: "doc.richtext")
-                                        .font(.system(size: 12))
-                                    Text("Preview")
-                                        .font(.system(size: 12, weight: .semibold))
+                        // Trailing: Preview
+                        VStack(spacing: 0) {
+                            // Header del panel de preview
+                            HStack {
+                                Image(systemName: "doc.richtext")
+                                    .font(.system(size: 12))
+                                Text("Preview")
+                                    .font(.system(size: 12, weight: .semibold))
 
-                                    Text("(\(tabManager.activeFile?.content.count ?? 0) chars)")
-                                        .font(.system(size: 10))
-                                        .foregroundColor(.secondary)
+                                Text("(\(tabManager.activeFile?.content.count ?? 0) chars)")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.secondary)
 
-                                    Spacer()
-                                    Button(action: {
-                                        withAnimation {
-                                            showPreviewPanel = false
-                                        }
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.secondary)
+                                Spacer()
+                                Button(action: {
+                                    withAnimation {
+                                        showPreviewPanel = false
                                     }
-                                    .buttonStyle(.plain)
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondary)
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color(NSColor.controlBackgroundColor))
-
-                                Divider()
-
-                                if let activeFile = tabManager.activeFile {
-                                    PreviewView(markdown: activeFile.content, settings: settings)
-                                        .onAppear {
-                                            LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
-                                        }
-                                }
+                                .buttonStyle(.plain)
                             }
-                        ) : nil
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(Color(NSColor.controlBackgroundColor))
+
+                            Divider()
+
+                            if let activeFile = tabManager.activeFile {
+                                PreviewView(markdown: activeFile.content, settings: settings)
+                                    .onAppear {
+                                        LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
+                                    }
+                            }
+                        }
                     }
                 } bottom: {
-                    // Bottom: Log panel (optional)
-                    showLogPanel ? AnyView(LogPanelView()) : nil
+                    // Bottom: Log panel
+                    LogPanelView()
                 }
             }
         }
