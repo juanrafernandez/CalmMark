@@ -11,6 +11,28 @@ Un editor de Markdown minimalista, elegante y nativo para macOS que proporciona 
 
 ## ✨ Características Principales
 
+### 📁 Modo Proyecto con Sidebar
+- **Navegación de archivos** estilo Xcode con tree view jerárquico
+- **Abrir carpetas** completas y trabajar con múltiples archivos (`⌘⇧O`)
+- **Sidebar colapsable** con toggle rápido (`⌘0`)
+- **Iconos inteligentes** que identifican tipos de archivos
+- **Detección automática** de archivos de comandos IA (`.claude/commands/*.md`)
+
+### 📑 Sistema de Pestañas
+- **Múltiples archivos abiertos** simultáneamente
+- **Tab bar horizontal** con indicadores de cambios no guardados
+- **Cerrar tabs** individualmente (`⌘W`) o todos a la vez (`⌘⌥W`)
+- **Guardar individual** (`⌘S`) o guardar todos (`⌘⌥S`)
+- **Navegación rápida** entre archivos abiertos
+
+### 🤖 Plantillas de Comandos para Agentes IA
+- **10+ plantillas profesionales** para Claude Code y otros agentes IA
+- **Categorías organizadas**: Code, Documentation, Testing, Git, Custom
+- **Variables inteligentes** con sintaxis `{{variable}}`
+- **Creación asistida** con preview en tiempo real
+- **Detección automática** de archivos `.claude/commands/*.md`
+- **Iconografía especial** para comandos (terminal púrpura ⚡)
+
 ### 📝 Edición Markdown
 - **Editor potente** con resaltado de sintaxis en tiempo real
 - **Fuente monoespaciada** (SF Mono) optimizada para escritura de código y texto
@@ -79,10 +101,39 @@ Un editor de Markdown minimalista, elegante y nativo para macOS que proporciona 
 
 ## 📖 Uso
 
-### Abrir Documentos
+### Modo Proyecto
+
+#### Abrir Carpeta
+- `⌘⇧O` - Abrir carpeta/proyecto
+- Haz clic en "Open Folder" en la pantalla de bienvenida
+- El sidebar mostrará la estructura de archivos completa
+
+#### Sidebar
+- `⌘0` - Toggle mostrar/ocultar sidebar
+- Click en carpetas para expandir/contraer
+- Click en archivos Markdown para abrirlos en pestañas
+- Iconos especiales para archivos de comandos IA (⚡)
+
+#### Tabs (Pestañas)
+- `⌘W` - Cerrar pestaña activa
+- `⌘⌥W` - Cerrar todas las pestañas
+- Click en tabs para cambiar entre archivos
+- Los tabs muestran un punto (•) cuando hay cambios sin guardar
+
+#### Comandos IA
+- Click en el icono del terminal (⌘) en el toolbar
+- Selecciona una categoría y plantilla
+- Personaliza el nombre del archivo
+- Click en "Create Command" para generar
+- Ver [AI_COMMANDS.md](AI_COMMANDS.md) para guía completa
+
+### Modo Documento (Archivo Individual)
+
+#### Abrir Documentos
 - `⌘O` - Abrir archivo Markdown existente
 - `⌘N` - Crear nuevo documento
 - `⌘S` - Guardar documento
+- `⌘⌥S` - Guardar todos los archivos abiertos
 - `⌘⇧S` - Guardar como...
 
 ### Navegación entre Vistas
@@ -103,34 +154,48 @@ Un editor de Markdown minimalista, elegante y nativo para macOS que proporciona 
 
 ```
 CalmMark/
-├── CalmMark.xcodeproj/          # Proyecto Xcode
+├── CalmMark.xcodeproj/            # Proyecto Xcode
 │   ├── project.pbxproj
 │   └── xcshareddata/
-└── CalmMark/                     # Código fuente
-    ├── CalmMarkApp.swift         # Punto de entrada de la app
-    ├── CalmMarkDocument.swift    # Modelo de documento
-    ├── ContentView.swift         # Vista principal
-    ├── EditorView.swift          # Editor de texto con sintaxis
-    ├── PreviewView.swift         # Vista previa WebView
-    ├── PreferencesView.swift     # Ventana de preferencias
-    ├── ExportView.swift          # Diálogo de exportación
-    ├── AppSettings.swift         # Configuración global
-    ├── MarkdownRenderer.swift    # Motor de renderizado MD→HTML
-    ├── StylesheetGenerator.swift # Generador de CSS
-    ├── ExportManager.swift       # Gestión de exportaciones
-    ├── Assets.xcassets/          # Recursos e iconos
-    ├── Info.plist                # Configuración de la app
-    └── CalmMark.entitlements     # Permisos de sandbox
+└── CalmMark/                       # Código fuente
+    ├── CalmMarkApp.swift           # Punto de entrada de la app
+    ├── CalmMarkDocument.swift      # Modelo de documento
+    ├── ContentView.swift           # Vista principal (modo documento)
+    ├── ProjectContentView.swift   # Vista principal (modo proyecto) ✨ NUEVO
+    ├── EditorView.swift            # Editor de texto con sintaxis
+    ├── PreviewView.swift           # Vista previa WebView
+    ├── PreferencesView.swift       # Ventana de preferencias
+    ├── ExportView.swift            # Diálogo de exportación
+    ├── AppSettings.swift           # Configuración global
+    ├── FileSystemManager.swift     # Gestor de sistema de archivos ✨ NUEVO
+    ├── FileNavigatorView.swift     # Sidebar de navegación ✨ NUEVO
+    ├── TabManager.swift            # Gestor de pestañas ✨ NUEVO
+    ├── TabBarView.swift            # Barra de pestañas ✨ NUEVO
+    ├── CommandTemplateManager.swift # Plantillas de comandos IA ✨ NUEVO
+    ├── CommandTemplatesView.swift  # Vista de plantillas ✨ NUEVO
+    ├── MarkdownRenderer.swift      # Motor de renderizado MD→HTML
+    ├── StylesheetGenerator.swift   # Generador de CSS
+    ├── ExportManager.swift         # Gestión de exportaciones
+    ├── Assets.xcassets/            # Recursos e iconos
+    ├── Info.plist                  # Configuración de la app
+    └── CalmMark.entitlements       # Permisos de sandbox
 ```
 
 ---
 
 ## 🎯 Roadmap Futuro (v2.0+)
 
-Las siguientes características están planificadas para futuras versiones:
+### ✅ Completado (v1.5)
 
-- [ ] **Pestañas múltiples** - Editar varios documentos simultáneamente
+- [x] **Sidebar de navegación** - Tree view estilo Xcode
+- [x] **Abrir carpetas** - Modo proyecto completo
+- [x] **Pestañas múltiples** - Editar varios documentos simultáneamente
+- [x] **Plantillas de comandos IA** - 10+ templates para Claude Code
+
+### 🔜 Próximas Características
+
 - [ ] **Búsqueda y reemplazo** (`⌘F`) con highlight
+- [ ] **Búsqueda en proyecto** - Find in files
 - [ ] **Outline de headings** - Navegación rápida por secciones
 - [ ] **Modo Zen/Focus** - Escritura sin distracciones
 - [ ] **Resaltado avanzado** similar a VSCode con TreeSitter
@@ -142,6 +207,8 @@ Las siguientes características están planificadas para futuras versiones:
 - [ ] **Soporte para tablas** con editor visual
 - [ ] **Diagramas Mermaid** - Renderizado de gráficos
 - [ ] **Math (LaTeX)** - Ecuaciones matemáticas
+- [ ] **Git integration** - Ver cambios inline
+- [ ] **Variables en plantillas** - Auto-completion para `{{variables}}`
 
 ---
 
