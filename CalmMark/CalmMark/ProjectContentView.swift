@@ -69,7 +69,12 @@ struct ProjectContentView: View {
                             )
                             .frame(width: sidebarWidth)
 
-                            Divider()
+                            DragDivider(
+                                orientation: .vertical,
+                                offset: $sidebarWidth,
+                                minOffset: 150,
+                                maxOffset: min(500, geometry.size.width * 0.4)
+                            )
                         }
 
                         // Editor central
@@ -96,7 +101,12 @@ struct ProjectContentView: View {
 
                         // Panel de Preview derecho
                         if showPreviewPanel, let activeFile = tabManager.activeFile {
-                            Divider()
+                            DragDivider(
+                                orientation: .vertical,
+                                offset: $previewPanelWidth,
+                                minOffset: 200,
+                                maxOffset: min(800, geometry.size.width * 0.5)
+                            )
 
                             VStack(spacing: 0) {
                                 // Header del panel de preview
@@ -139,7 +149,12 @@ struct ProjectContentView: View {
 
                     // Panel de Logs inferior
                     if showLogPanel {
-                        Divider()
+                        DragDivider(
+                            orientation: .horizontal,
+                            offset: $logPanelHeight,
+                            minOffset: 100,
+                            maxOffset: min(600, geometry.size.height * 0.6)
+                        )
 
                         LogPanelView()
                             .frame(height: logPanelHeight)
