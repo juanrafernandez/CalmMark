@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		35782CF12EC8EDAD00427117 /* MarkdownFormattingToolbar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */; };
 		AA0001001A000001 /* CalmMarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001001A000002 /* CalmMarkApp.swift */; };
 		AA0001011A000001 /* CalmMarkDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001011A000002 /* CalmMarkDocument.swift */; };
 		AA0001021A000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001021A000002 /* ContentView.swift */; };
@@ -30,6 +31,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownFormattingToolbar.swift; sourceTree = "<group>"; };
 		AA0000001A000001 /* CalmMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalmMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkApp.swift; sourceTree = "<group>"; };
 		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkDocument.swift; sourceTree = "<group>"; };
@@ -91,6 +93,7 @@
 				AA0001151A000002 /* ProjectContentView.swift */,
 				AA0001031A000002 /* EditorView.swift */,
 				AA0001041A000002 /* PreviewView.swift */,
+				35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */,
 				AA0001051A000002 /* PreferencesView.swift */,
 				AA0001101A000002 /* ExportView.swift */,
 				AA0001061A000002 /* AppSettings.swift */,
@@ -202,6 +205,7 @@
 				AA0001121A000001 /* FileNavigatorView.swift in Sources */,
 				AA0001131A000001 /* TabManager.swift in Sources */,
 				AA0001141A000001 /* TabBarView.swift in Sources */,
+				35782CF12EC8EDAD00427117 /* MarkdownFormattingToolbar.swift in Sources */,
 				AA0001161A000001 /* CommandTemplateManager.swift in Sources */,
 				AA0001171A000001 /* CommandTemplatesView.swift in Sources */,
 				AA0001071A000001 /* MarkdownRenderer.swift in Sources */,
