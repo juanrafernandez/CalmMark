@@ -145,11 +145,11 @@ struct ProjectContentView: View {
                             }
                         }
                     }
-                    .id(updateTrigger)
                 } bottom: {
                     // Bottom: Log panel
                     LogPanelView()
                 }
+                .id(updateTrigger)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .changeViewMode)) { notification in

@@ -363,6 +363,18 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
         // Update visibility of bottom panel using NSSplitView's native collapse/expand
         guard splitView.arrangedSubviews.count == 2 else { return }
 
+        print("🔄 [VSplitView2] updateNSView - showBottom: \(showBottom)")
+
+        // CRITICAL: Update the content of hosting controllers
+        // This ensures that when the top content changes (e.g., HSplitView3 recreated), it updates
+        if let topController = context.coordinator.topController {
+            topController.rootView = top
+            print("📝 [VSplitView2] Updated top panel content")
+        }
+        if let bottomController = context.coordinator.bottomController {
+            bottomController.rootView = bottom
+        }
+
         let bottomView = splitView.arrangedSubviews[1]
         let shouldCollapseBottom = !showBottom
         if shouldCollapseBottom != bottomView.isHidden {
