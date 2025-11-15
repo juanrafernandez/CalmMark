@@ -145,6 +145,7 @@ struct ProjectContentView: View {
                             }
                         }
                     }
+                    .id(updateTrigger)
                 } bottom: {
                     // Bottom: Log panel
                     LogPanelView()
