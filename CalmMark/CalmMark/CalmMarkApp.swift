@@ -7,15 +7,18 @@
 //
 
 import SwiftUI
+import AppKit
 
 @main
 struct CalmMarkApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var showDocumentMode = false
 
     var body: some Scene {
         // Main Project/Folder mode
         WindowGroup("CalmMark") {
             ProjectContentView()
+                .environmentObject(appDelegate.tabManagerBridge)
         }
         .commands {
             CalmMarkCommands()
@@ -35,6 +38,52 @@ struct CalmMarkApp: App {
         }
         #endif
     }
+}
+
+// MARK: - App Delegate
+
+class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+    let tabManagerBridge = TabManagerBridge()
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Verificar si hay archivos con cambios sin guardar
+        guard let tabManager = tabManagerBridge.tabManager else {
+            return .terminateNow
+        }
+
+        let dirtyFiles = tabManager.openFiles.filter { $0.isDirty }
+
+        if dirtyFiles.isEmpty {
+            return .terminateNow
+        }
+
+        // Mostrar diálogo al usuario
+        let alert = NSAlert()
+        alert.messageText = "Do you want to save changes before quitting?"
+        alert.informativeText = "\(dirtyFiles.count) file(s) have unsaved changes."
+        alert.addButton(withTitle: "Save All")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+
+        let response = alert.runModal()
+
+        switch response {
+        case .alertFirstButtonReturn: // Save All
+            tabManager.saveAllFiles()
+            return .terminateNow
+        case .alertSecondButtonReturn: // Don't Save
+            // Hot Exit guardará automáticamente el contenido sin guardar
+            return .terminateNow
+        default: // Cancel
+            return .terminateCancel
+        }
+    }
+}
+
+// Bridge para conectar TabManager con AppDelegate
+class TabManagerBridge: ObservableObject {
+    weak var tabManager: TabManager?
 }
 
 struct CalmMarkCommands: Commands {

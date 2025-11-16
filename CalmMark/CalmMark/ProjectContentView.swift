@@ -12,6 +12,7 @@ struct ProjectContentView: View {
     @StateObject private var fileManager = FileSystemManager()
     @StateObject private var tabManager = TabManager()
     @StateObject private var settings = AppSettings.shared
+    @EnvironmentObject var tabManagerBridge: TabManagerBridge
 
     @State private var viewMode: ViewMode = AppSettings.shared.defaultViewMode
     @State private var showSidebar: Bool = true
@@ -196,6 +197,9 @@ struct ProjectContentView: View {
             )
         }
         .onAppear {
+            // Conectar TabManager con AppDelegate para interceptar cierre de app
+            tabManagerBridge.tabManager = tabManager
+
             // Restaurar última carpeta y archivo desde bookmarks
             if fileManager.restoreLastFolder() {
                 // Intentar restaurar el último archivo activo
