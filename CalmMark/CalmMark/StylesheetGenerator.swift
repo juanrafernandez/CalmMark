@@ -108,8 +108,8 @@ class StylesheetGenerator {
             margin-bottom: 16px;
             overflow-x: auto;
             line-height: 1.45;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            white-space: pre;
+            overflow-wrap: normal;
             font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
         }
 
@@ -121,8 +121,7 @@ class StylesheetGenerator {
             display: block;
             overflow: visible;
             line-height: inherit;
-            white-space: pre-wrap;
-            word-wrap: break-word;
+            white-space: pre;
         }
 
         /* Lists */
