@@ -263,8 +263,8 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
             let totalWidth = splitView.bounds.width
             switch dividerIndex {
-            case 0: return min(500, totalWidth * 0.4)  // Sidebar maximum
-            default: return totalWidth - 200           // Preview minimum space
+            case 0: return min(500, totalWidth * 0.4)                      // Sidebar maximum
+            default: return showTrailing ? (totalWidth - 200) : totalWidth // Preview: totalWidth si colapsado, totalWidth-200 si visible
             }
         }
 
