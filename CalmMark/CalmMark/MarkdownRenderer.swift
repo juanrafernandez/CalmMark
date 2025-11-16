@@ -123,7 +123,12 @@ class MarkdownRenderer {
                    let fullRange = Range(match.range(at: 0), in: result) {
 
                     let language = String(result[languageRange])
-                    let code = String(result[codeRange]).htmlEscaped
+                    var code = String(result[codeRange])
+
+                    // Preserve newlines by ensuring they're in the HTML
+                    code = code.htmlEscaped
+
+                    // Create HTML block - preserve all whitespace including newlines
                     let replacement = "<pre><code class=\"language-\(language)\">\(code)</code></pre>"
 
                     result.replaceSubrange(fullRange, with: replacement)
@@ -142,6 +147,7 @@ class MarkdownRenderer {
         var listType = ""
         var inListItem = false
         var listItemContent: [String] = []
+        var inCodeBlock = false
 
         func closeListItem() {
             if inListItem {
@@ -168,6 +174,32 @@ class MarkdownRenderer {
             let line = lines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let isIndented = line.hasPrefix(" ") || line.hasPrefix("\t")
+
+            // Track when we enter/exit code blocks to preserve them
+            if line.contains("<pre><code") {
+                inCodeBlock = true
+            }
+            if line.contains("</code></pre>") {
+                inCodeBlock = false
+                // If we're in a list item, add the whole line, otherwise add to output
+                if inListItem {
+                    listItemContent.append(line)
+                } else {
+                    closeList()
+                    output.append(line)
+                }
+                continue
+            }
+
+            // If we're inside a code block, don't process as list - just preserve
+            if inCodeBlock {
+                if inListItem {
+                    listItemContent.append(line)
+                } else {
+                    output.append(line)
+                }
+                continue
+            }
 
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
