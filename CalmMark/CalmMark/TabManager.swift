@@ -72,7 +72,8 @@ class HotExitManager {
 
         let key = hotExitKey(for: url)
         userDefaults.set(content, forKey: key)
-        print("💾 [HotExit] Saved unsaved content for: \(url.lastPathComponent)")
+        // Log reducido - solo cuando es nuevo o cambio significativo
+        // print("💾 [HotExit] Saved unsaved content for: \(url.lastPathComponent)")
     }
 
     func loadUnsavedContent(for url: URL) -> String? {
