@@ -9,10 +9,18 @@ import Foundation
 
 class MarkdownRenderer {
 
+    // Storage for code blocks during processing
+    private static var codeBlockPlaceholders: [String: String] = [:]
+    private static var placeholderCounter = 0
+
     // Render Markdown to HTML
     // This uses a basic implementation - can be enhanced with swift-markdown later
     static func renderToHTML(_ markdown: String, settings: AppSettings = AppSettings.shared) -> String {
         var html = markdown
+
+        // Reset placeholders
+        codeBlockPlaceholders = [:]
+        placeholderCounter = 0
 
         // Code blocks FIRST (to protect code from other transformations)
         html = renderCodeBlocks(html)
@@ -106,7 +114,18 @@ class MarkdownRenderer {
         // Paragraphs (wrap non-tagged lines)
         html = renderParagraphs(html)
 
+        // Restore code blocks from placeholders
+        html = restoreCodeBlocks(html)
+
         return wrapInHTML(html, settings: settings)
+    }
+
+    private static func restoreCodeBlocks(_ text: String) -> String {
+        var result = text
+        for (placeholder, codeBlock) in codeBlockPlaceholders {
+            result = result.replacingOccurrences(of: placeholder, with: codeBlock)
+        }
+        return result
     }
 
     private static func renderCodeBlocks(_ text: String) -> String {
@@ -129,9 +148,17 @@ class MarkdownRenderer {
                     code = code.htmlEscaped
 
                     // Create HTML block - preserve all whitespace including newlines
-                    let replacement = "<pre><code class=\"language-\(language)\">\(code)</code></pre>"
+                    let codeBlock = "<pre><code class=\"language-\(language)\">\(code)</code></pre>"
 
-                    result.replaceSubrange(fullRange, with: replacement)
+                    // Create unique placeholder
+                    let placeholder = "___CODEBLOCK_\(placeholderCounter)___"
+                    placeholderCounter += 1
+
+                    // Store the actual code block
+                    codeBlockPlaceholders[placeholder] = codeBlock
+
+                    // Replace with placeholder
+                    result.replaceSubrange(fullRange, with: placeholder)
                 }
             }
         }
@@ -147,7 +174,6 @@ class MarkdownRenderer {
         var listType = ""
         var inListItem = false
         var listItemContent: [String] = []
-        var inCodeBlock = false
 
         func closeListItem() {
             if inListItem {
@@ -174,32 +200,7 @@ class MarkdownRenderer {
             let line = lines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let isIndented = line.hasPrefix(" ") || line.hasPrefix("\t")
-
-            // Track when we enter/exit code blocks to preserve them
-            if line.contains("<pre><code") {
-                inCodeBlock = true
-            }
-            if line.contains("</code></pre>") {
-                inCodeBlock = false
-                // If we're in a list item, add the whole line, otherwise add to output
-                if inListItem {
-                    listItemContent.append(line)
-                } else {
-                    closeList()
-                    output.append(line)
-                }
-                continue
-            }
-
-            // If we're inside a code block, don't process as list - just preserve
-            if inCodeBlock {
-                if inListItem {
-                    listItemContent.append(line)
-                } else {
-                    output.append(line)
-                }
-                continue
-            }
+            let isPlaceholder = line.contains("___CODEBLOCK_")
 
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
@@ -247,8 +248,8 @@ class MarkdownRenderer {
                     inListItem = true
                 }
             }
-            // If we're in a list item and this is indented content or HTML, add to item
-            else if inListItem && (isIndented || trimmed.hasPrefix("<") || trimmed.isEmpty) {
+            // If we're in a list item and this is indented content, placeholder, or HTML, add to item
+            else if inListItem && (isIndented || isPlaceholder || trimmed.hasPrefix("<") || trimmed.isEmpty) {
                 listItemContent.append(line)
             }
             // Non-list content
