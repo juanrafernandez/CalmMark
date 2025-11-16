@@ -17,23 +17,23 @@ class MarkdownRenderer {
         // Code blocks FIRST (to protect code from other transformations)
         html = renderCodeBlocks(html)
 
-        // Headers (# to ######) - MUST use anchorsMatchLines for multiline
+        // Headers (# to ######) - Use (?m) for multiline mode
         for level in (1...6).reversed() {
             let hashes = String(repeating: "#", count: level)
-            let pattern = "^\(hashes)\\s+(.+)$"
+            let pattern = "(?m)^\(hashes)\\s+(.+)$"
             html = html.replacingOccurrences(
                 of: pattern,
                 with: "<h\(level)>$1</h\(level)>",
-                options: [.regularExpression, .anchorsMatchLines],
+                options: .regularExpression,
                 range: nil
             )
         }
 
         // Horizontal rules BEFORE other inline elements
         html = html.replacingOccurrences(
-            of: "^(-{3,}|\\*{3,}|_{3,})$",
+            of: "(?m)^(-{3,}|\\*{3,}|_{3,})$",
             with: "<hr />",
-            options: [.regularExpression, .anchorsMatchLines],
+            options: .regularExpression,
             range: nil
         )
 
