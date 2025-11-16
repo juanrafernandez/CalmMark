@@ -48,32 +48,35 @@ class StylesheetGenerator {
         h1, h2, h3, h4, h5, h6 {
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
             font-weight: 600;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
-            line-height: 1.3;
+            margin-top: 24px;
+            margin-bottom: 16px;
+            line-height: 1.25;
         }
 
         h1 {
-            font-size: 2.2em;
-            border-bottom: 2px solid \(hrColor);
+            font-size: 2em;
+            border-bottom: 1px solid \(hrColor);
             padding-bottom: 0.3em;
+            margin-top: 0;
+            margin-bottom: 16px;
         }
 
         h2 {
-            font-size: 1.8em;
+            font-size: 1.5em;
             border-bottom: 1px solid \(hrColor);
             padding-bottom: 0.3em;
         }
 
-        h3 { font-size: 1.5em; }
-        h4 { font-size: 1.25em; }
-        h5 { font-size: 1.1em; }
-        h6 { font-size: 1em; opacity: 0.85; }
+        h3 { font-size: 1.25em; }
+        h4 { font-size: 1em; }
+        h5 { font-size: 0.875em; }
+        h6 { font-size: 0.85em; color: \(isDark ? "#8b949e" : "#57606a"); }
 
         /* Paragraphs */
         p {
-            margin-bottom: 1em;
-            text-align: justify;
+            margin-top: 0;
+            margin-bottom: 16px;
+            text-align: left;
         }
 
         /* Links */
@@ -91,89 +94,153 @@ class StylesheetGenerator {
         /* Code */
         code {
             font-family: "SF Mono", Menlo, Monaco, "Courier New", monospace;
-            font-size: 0.9em;
+            font-size: 85%;
             background-color: \(codeBackground);
             padding: 0.2em 0.4em;
-            border-radius: 4px;
-            border: 1px solid \(codeBorder);
+            border-radius: 6px;
         }
 
         pre {
             background-color: \(codeBackground);
-            border: 1px solid \(codeBorder);
-            border-radius: 8px;
+            border-radius: 6px;
             padding: 16px;
-            margin: 1em 0;
+            margin-top: 0;
+            margin-bottom: 16px;
             overflow-x: auto;
+            line-height: 1.45;
         }
 
         pre code {
             background: none;
             border: none;
             padding: 0;
-            font-size: 0.95em;
+            font-size: 100%;
+            display: inline;
+            max-width: auto;
+            overflow: visible;
+            line-height: inherit;
+            word-wrap: normal;
         }
 
         /* Lists */
         ul, ol {
-            margin: 1em 0;
+            margin-top: 0;
+            margin-bottom: 16px;
             padding-left: 2em;
         }
 
         li {
-            margin: 0.5em 0;
+            margin-top: 0.25em;
+        }
+
+        li + li {
+            margin-top: 0.25em;
+        }
+
+        /* Task lists */
+        ul.task-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        .task-list-item {
+            list-style-type: none;
+        }
+
+        .task-list-item input[type="checkbox"] {
+            margin: 0 0.5em 0.25em -1.6em;
+            vertical-align: middle;
         }
 
         /* Blockquotes */
         blockquote {
             background-color: \(blockquoteBackground);
-            border-left: 4px solid \(blockquoteBorder);
-            padding: 1em 1.5em;
-            margin: 1em 0;
-            border-radius: 4px;
-            font-style: italic;
+            border-left: 0.25em solid \(blockquoteBorder);
+            padding: 0 1em;
+            margin-left: 0;
+            margin-right: 0;
+            margin-top: 0;
+            margin-bottom: 16px;
         }
 
-        blockquote p {
-            margin: 0;
+        blockquote > :first-child {
+            margin-top: 0;
+        }
+
+        blockquote > :last-child {
+            margin-bottom: 0;
         }
 
         /* Horizontal Rule */
         hr {
-            border: none;
-            border-top: 2px solid \(hrColor);
-            margin: 2em 0;
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: \(hrColor);
+            border: 0;
         }
 
         /* Images */
         img {
             max-width: 100%;
             height: auto;
+            vertical-align: middle;
+            /* Inline by default for badges */
+            display: inline-block;
+            margin: 0.2em 0.3em;
+        }
+
+        /* Large images get more spacing */
+        img[src*=".png"],
+        img[src*=".jpg"],
+        img[src*=".jpeg"],
+        img[src*=".gif"]:not([src*="shields.io"]):not([src*="badge"]) {
+            display: block;
+            margin: 1em auto;
             border-radius: 8px;
-            margin: 1em 0;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Badges and shields stay inline */
+        img[src*="shields.io"],
+        img[src*="badge"],
+        img[src*=".svg"] {
+            display: inline-block;
+            margin: 0.2em 0.3em;
+            vertical-align: middle;
+            border-radius: 3px;
+            box-shadow: none;
         }
 
         /* Tables */
         table {
+            border-spacing: 0;
             border-collapse: collapse;
-            width: 100%;
-            margin: 1em 0;
+            display: block;
+            margin-top: 0;
+            margin-bottom: 16px;
+            width: max-content;
+            max-width: 100%;
+            overflow: auto;
         }
 
         th, td {
+            padding: 6px 13px;
             border: 1px solid \(codeBorder);
-            padding: 0.75em;
-            text-align: left;
         }
 
         th {
-            background-color: \(codeBackground);
             font-weight: 600;
+            background-color: \(isDark ? "#161b22" : "#f6f8fa");
         }
 
-        tr:nth-child(even) {
-            background-color: \(isDark ? "#252525" : "#f9f9fb");
+        tr {
+            background-color: \(backgroundColor);
+            border-top: 1px solid \(codeBorder);
+        }
+
+        tr:nth-child(2n) {
+            background-color: \(isDark ? "#0d1117" : "#f6f8fa");
         }
 
         /* Smooth scrolling */

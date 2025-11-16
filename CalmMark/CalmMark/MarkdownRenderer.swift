@@ -14,51 +14,41 @@ class MarkdownRenderer {
     static func renderToHTML(_ markdown: String, settings: AppSettings = AppSettings.shared) -> String {
         var html = markdown
 
-        // Headers (# to ######)
-        html = html.replacingOccurrences(
-            of: "^#{6}\\s+(.+)$",
-            with: "<h6>$1</h6>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "^#{5}\\s+(.+)$",
-            with: "<h5>$1</h5>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "^#{4}\\s+(.+)$",
-            with: "<h4>$1</h4>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "^#{3}\\s+(.+)$",
-            with: "<h3>$1</h3>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "^#{2}\\s+(.+)$",
-            with: "<h2>$1</h2>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "^#\\s+(.+)$",
-            with: "<h1>$1</h1>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Code blocks (```language ... ```)
+        // Code blocks FIRST (to protect code from other transformations)
         html = renderCodeBlocks(html)
 
-        // Inline code (`code`)
+        // Headers (# to ######) - MUST use anchorsMatchLines for multiline
+        for level in (1...6).reversed() {
+            let hashes = String(repeating: "#", count: level)
+            let pattern = "^\(hashes)\\s+(.+)$"
+            html = html.replacingOccurrences(
+                of: pattern,
+                with: "<h\(level)>$1</h\(level)>",
+                options: [.regularExpression, .anchorsMatchLines],
+                range: nil
+            )
+        }
+
+        // Horizontal rules BEFORE other inline elements
         html = html.replacingOccurrences(
-            of: "`([^`]+)`",
-            with: "<code>$1</code>",
+            of: "^(-{3,}|\\*{3,}|_{3,})$",
+            with: "<hr />",
+            options: [.regularExpression, .anchorsMatchLines],
+            range: nil
+        )
+
+        // Images BEFORE links (because ![...](url) contains [...](url))
+        html = html.replacingOccurrences(
+            of: "!\\[([^\\]]*)\\]\\(([^\\)]+)\\)",
+            with: "<img src=\"$2\" alt=\"$1\" loading=\"lazy\" />",
+            options: .regularExpression,
+            range: nil
+        )
+
+        // Links
+        html = html.replacingOccurrences(
+            of: "\\[([^\\]]+)\\]\\(([^\\)]+)\\)",
+            with: "<a href=\"$2\" target=\"_blank\" rel=\"noopener noreferrer\">$1</a>",
             options: .regularExpression,
             range: nil
         )
@@ -77,49 +67,41 @@ class MarkdownRenderer {
             range: nil
         )
 
-        // Italic (*text* or _text_)
+        // Strikethrough (~~text~~)
         html = html.replacingOccurrences(
-            of: "\\*([^*]+)\\*",
+            of: "~~([^~]+)~~",
+            with: "<del>$1</del>",
+            options: .regularExpression,
+            range: nil
+        )
+
+        // Italic (*text* or _text_) - AFTER bold to avoid conflicts
+        html = html.replacingOccurrences(
+            of: "(?<!\\*)\\*([^*]+)\\*(?!\\*)",
             with: "<em>$1</em>",
             options: .regularExpression,
             range: nil
         )
         html = html.replacingOccurrences(
-            of: "_([^_]+)_",
+            of: "(?<!_)_([^_]+)_(?!_)",
             with: "<em>$1</em>",
             options: .regularExpression,
             range: nil
         )
 
-        // Links ([text](url))
+        // Inline code (`code`)
         html = html.replacingOccurrences(
-            of: "\\[([^\\]]+)\\]\\(([^\\)]+)\\)",
-            with: "<a href=\"$2\">$1</a>",
+            of: "`([^`]+)`",
+            with: "<code>$1</code>",
             options: .regularExpression,
             range: nil
         )
 
-        // Images (![alt](url))
-        html = html.replacingOccurrences(
-            of: "!\\[([^\\]]*)\\]\\(([^\\)]+)\\)",
-            with: "<img src=\"$2\" alt=\"$1\" />",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Unordered lists (- item or * item)
+        // Lists
         html = renderLists(html)
 
-        // Blockquotes (> text)
+        // Blockquotes
         html = renderBlockquotes(html)
-
-        // Horizontal rules (--- or ***)
-        html = html.replacingOccurrences(
-            of: "^(-{3,}|\\*{3,})$",
-            with: "<hr />",
-            options: .regularExpression,
-            range: nil
-        )
 
         // Paragraphs (wrap non-tagged lines)
         html = renderParagraphs(html)
@@ -157,38 +139,66 @@ class MarkdownRenderer {
         let lines = result.components(separatedBy: .newlines)
         var output: [String] = []
         var inList = false
+        var listType = ""
 
         for line in lines {
-            if line.hasPrefix("- ") || line.hasPrefix("* ") {
+            // Task lists (- [ ] or - [x])
+            if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
                 if !inList {
-                    output.append("<ul>")
+                    output.append("<ul class=\"task-list\">")
                     inList = true
+                    listType = "ul"
+                }
+                let checked = line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
+                let item = line.dropFirst(6) // Skip "- [x] "
+                let checkbox = checked ? "<input type=\"checkbox\" checked disabled />" : "<input type=\"checkbox\" disabled />"
+                output.append("<li class=\"task-list-item\">\(checkbox) \(item)</li>")
+            }
+            // Regular unordered lists
+            else if line.hasPrefix("- ") || line.hasPrefix("* ") {
+                if !inList || listType != "ul" {
+                    if inList && listType == "ol" {
+                        output.append("</ol>")
+                    }
+                    if !inList {
+                        output.append("<ul>")
+                    }
+                    inList = true
+                    listType = "ul"
                 }
                 let item = line.dropFirst(2)
                 output.append("<li>\(item)</li>")
-            } else if line.hasPrefix("1. ") || line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
-                if !inList {
-                    output.append("<ol>")
+            }
+            // Ordered lists
+            else if line.hasPrefix("1. ") || line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
+                if !inList || listType != "ol" {
+                    if inList && listType == "ul" {
+                        output.append("</ul>")
+                    }
+                    if !inList {
+                        output.append("<ol>")
+                    }
                     inList = true
+                    listType = "ol"
                 }
                 if let dotIndex = line.firstIndex(of: ".") {
                     let item = line[line.index(after: dotIndex)...].trimmingCharacters(in: .whitespaces)
                     output.append("<li>\(item)</li>")
                 }
-            } else {
+            }
+            // Non-list line
+            else {
                 if inList {
-                    // Close the list - check if it was ul or ol
-                    let lastTag = output.last?.contains("<ul>") == true ? "</ul>" : "</ol>"
-                    output.append(lastTag)
+                    output.append(listType == "ul" ? "</ul>" : "</ol>")
                     inList = false
+                    listType = ""
                 }
                 output.append(line)
             }
         }
 
         if inList {
-            let lastTag = output.last?.contains("<li>") == true ? "</ul>" : "</ol>"
-            output.append(lastTag)
+            output.append(listType == "ul" ? "</ul>" : "</ol>")
         }
 
         return output.joined(separator: "\n")
