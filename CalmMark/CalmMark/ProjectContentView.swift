@@ -239,6 +239,7 @@ struct ProjectContentView: View {
                 print("🔄 [ProjectContentView] Update trigger incremented to: \(updateTrigger)")
             }
         }
+        .background(WindowAccessor(tabManager: tabManager))
     }
 
 }
@@ -533,6 +534,95 @@ struct PreviewPanelView: View {
             PreviewView(markdown: activeFile.content, settings: settings)
                 .id(activeFile.id) // Forzar recreación cuando cambia el archivo
         }
+    }
+}
+
+// MARK: - Window Delegate for Close Button
+
+class ProjectWindowDelegate: NSObject, NSWindowDelegate {
+    weak var tabManager: TabManager?
+
+    init(tabManager: TabManager) {
+        self.tabManager = tabManager
+        super.init()
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        print("🚪 [WindowDelegate] windowShouldClose called (red close button)")
+
+        guard let tabManager = tabManager else {
+            print("⚠️ [WindowDelegate] TabManager is nil, allowing close")
+            return true
+        }
+
+        let dirtyFiles = tabManager.openFiles.filter { $0.isDirty }
+        print("📋 [WindowDelegate] Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total")
+
+        if dirtyFiles.isEmpty {
+            print("✅ [WindowDelegate] No dirty files, allowing close")
+            return true
+        }
+
+        // Mostrar diálogo al usuario
+        print("🔔 [WindowDelegate] Showing close confirmation dialog...")
+        let alert = NSAlert()
+        alert.messageText = "Do you want to save changes before closing?"
+        alert.informativeText = "\(dirtyFiles.count) file(s) have unsaved changes."
+        alert.addButton(withTitle: "Save All")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        alert.alertStyle = .warning
+
+        let response = alert.runModal()
+
+        switch response {
+        case .alertFirstButtonReturn: // Save All
+            print("💾 [WindowDelegate] User chose: Save All")
+            tabManager.saveAllFiles()
+            return true
+        case .alertSecondButtonReturn: // Don't Save
+            print("❌ [WindowDelegate] User chose: Don't Save (Hot Exit will preserve content)")
+            // Hot Exit guardará automáticamente el contenido sin guardar
+            return true
+        default: // Cancel
+            print("🚫 [WindowDelegate] User chose: Cancel")
+            return false
+        }
+    }
+}
+
+// MARK: - Window Accessor for SwiftUI
+
+struct WindowAccessor: NSViewRepresentable {
+    var tabManager: TabManager
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+
+        // Encontrar la ventana en el próximo ciclo de runloop
+        DispatchQueue.main.async {
+            if let window = view.window {
+                print("🪟 [WindowAccessor] Found window, setting delegate")
+                // Guardar referencia al delegate para evitar que se libere
+                context.coordinator.windowDelegate = ProjectWindowDelegate(tabManager: tabManager)
+                window.delegate = context.coordinator.windowDelegate
+                print("✅ [WindowAccessor] Window delegate set successfully")
+            }
+        }
+
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        // No-op
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator {
+        var windowDelegate: ProjectWindowDelegate?
     }
 }
 

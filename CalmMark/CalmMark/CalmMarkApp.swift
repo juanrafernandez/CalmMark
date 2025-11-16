@@ -45,6 +45,12 @@ struct CalmMarkApp: App {
 class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let tabManagerBridge = TabManagerBridge()
 
+    // Hacer que la app se cierre cuando se cierra la última ventana
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        print("🪟 [AppDelegate] Last window closed, app will terminate")
+        return true
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         print("🚪 [AppDelegate] applicationShouldTerminate called")
 

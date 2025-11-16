@@ -38,11 +38,16 @@ class OpenFile: Identifiable, ObservableObject, Equatable {
     }
 
     func save() throws {
+        print("💾 [OpenFile.save] GUARDANDO ARCHIVO A DISCO: \(name)")
+        print("   📍 Stack trace para debug:")
+        Thread.callStackSymbols.forEach { print("      \($0)") }
+
         try content.write(to: url, atomically: true, encoding: .utf8)
         isDirty = false
 
         // Limpiar hot exit cache cuando se guarda
         HotExitManager.shared.clearCache(for: url)
+        print("✅ [OpenFile.save] Archivo guardado exitosamente")
     }
 
     func reload() throws {
