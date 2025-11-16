@@ -125,6 +125,68 @@ class FileSystemManager: ObservableObject {
         root.isExpanded = true
         root.loadChildren()
         rootFolder = root
+
+        // Guardar bookmark con permisos persistentes
+        saveBookmark(for: url)
+    }
+
+    // MARK: - Bookmark Persistence
+
+    private func saveBookmark(for url: URL) {
+        do {
+            // Crear security-scoped bookmark
+            let bookmarkData = try url.bookmarkData(
+                options: .withSecurityScope,
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+
+            // Guardar en UserDefaults
+            UserDefaults.standard.set(bookmarkData, forKey: "lastOpenedFolderBookmark")
+            UserDefaults.standard.set(url.path, forKey: "lastOpenedFolder")
+            print("📌 [FileSystemManager] Bookmark saved for: \(url.path)")
+        } catch {
+            print("❌ [FileSystemManager] Error creating bookmark: \(error)")
+        }
+    }
+
+    func restoreLastFolder() -> Bool {
+        // Intentar restaurar desde bookmark
+        guard let bookmarkData = UserDefaults.standard.data(forKey: "lastOpenedFolderBookmark") else {
+            print("⚠️ [FileSystemManager] No bookmark found")
+            return false
+        }
+
+        do {
+            var isStale = false
+            let url = try URL(
+                resolvingBookmarkData: bookmarkData,
+                options: .withSecurityScope,
+                relativeTo: nil,
+                bookmarkDataIsStale: &isStale
+            )
+
+            // Iniciar acceso con security scope
+            guard url.startAccessingSecurityScopedResource() else {
+                print("❌ [FileSystemManager] Failed to access security-scoped resource")
+                return false
+            }
+
+            // Cargar la carpeta
+            setRootFolder(url)
+
+            // Si el bookmark está obsoleto, recrearlo
+            if isStale {
+                print("⚠️ [FileSystemManager] Bookmark is stale, recreating...")
+                saveBookmark(for: url)
+            }
+
+            print("✅ [FileSystemManager] Restored folder from bookmark: \(url.path)")
+            return true
+        } catch {
+            print("❌ [FileSystemManager] Error restoring bookmark: \(error)")
+            return false
+        }
     }
 
     // Get all markdown files in project

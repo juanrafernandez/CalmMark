@@ -228,22 +228,27 @@ struct ProjectContentView: View {
             )
         }
         .onAppear {
-            // Load last opened folder if any
-            if let lastFolderPath = UserDefaults.standard.string(forKey: "lastOpenedFolder"),
-               FileManager.default.fileExists(atPath: lastFolderPath) {
-                let url = URL(fileURLWithPath: lastFolderPath)
-                fileManager.setRootFolder(url)
-            }
-        }
-        .onChange(of: fileManager.rootFolder) { oldFolder, newFolder in
-            // Save last opened folder
-            if let folder = newFolder {
-                UserDefaults.standard.set(folder.url.path, forKey: "lastOpenedFolder")
+            // Restaurar última carpeta y archivo desde bookmarks
+            if fileManager.restoreLastFolder() {
+                // Intentar restaurar el último archivo activo
+                if let lastFilePath = UserDefaults.standard.string(forKey: "lastActiveFile") {
+                    let fileURL = URL(fileURLWithPath: lastFilePath)
+                    if FileManager.default.fileExists(atPath: lastFilePath) {
+                        // Abrir el archivo después de un pequeño delay para que la carpeta cargue
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            tabManager.openFile(url: fileURL)
+                            print("✅ [ProjectContentView] Restored active file: \(fileURL.lastPathComponent)")
+                        }
+                    }
+                }
             }
         }
         .onChange(of: tabManager.activeFile) { oldFile, newFile in
             if let file = newFile {
                 print("🔄 [ProjectContentView] Active file changed to: \(file.name)")
+
+                // Guardar archivo activo
+                UserDefaults.standard.set(file.url.path, forKey: "lastActiveFile")
 
                 // Opción A: Auto-mostrar preview cuando se abre el PRIMER archivo
                 if oldFile == nil && !showPreviewPanel {
@@ -252,6 +257,8 @@ struct ProjectContentView: View {
                 }
             } else {
                 print("🔄 [ProjectContentView] Active file cleared")
+                // Limpiar archivo activo guardado
+                UserDefaults.standard.removeObject(forKey: "lastActiveFile")
             }
             // CRITICAL: Force SwiftUI to redraw by changing @State
             DispatchQueue.main.async {
