@@ -142,6 +142,8 @@ class MarkdownRenderer {
         var listType = ""
 
         for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
                 if !inList || listType != "task" {
@@ -185,7 +187,13 @@ class MarkdownRenderer {
                     output.append("<li>\(item)</li>")
                 }
             }
-            // Non-list line
+            // Blank line or HTML tags - keep list open if we're in one
+            else if trimmed.isEmpty || trimmed.hasPrefix("<") {
+                // Don't close the list on blank lines or HTML content
+                // This allows list items with code blocks or nested content
+                output.append(line)
+            }
+            // Non-list line with actual content
             else {
                 if inList {
                     if listType == "task" || listType == "ul" {

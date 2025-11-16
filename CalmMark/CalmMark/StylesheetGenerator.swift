@@ -130,15 +130,6 @@ class StylesheetGenerator {
             padding-left: 2em;
         }
 
-        ol {
-            list-style-type: decimal;
-            counter-reset: item;
-        }
-
-        ol li {
-            display: list-item;
-        }
-
         li {
             margin-top: 0.25em;
         }
