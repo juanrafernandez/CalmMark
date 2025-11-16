@@ -163,32 +163,26 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
 
         print("📊 [HSplitView3] Added \(splitView.arrangedSubviews.count) subviews to split view")
 
-        // SIMPLE: Establecer visibilidad inicial
-        leadingController.view.isHidden = !showLeading
-        trailingController.view.isHidden = !showTrailing
-
-        if !showTrailing {
-            print("👁️ [HSplitView3] Trailing panel HIDDEN on init (showTrailing=false)")
-        }
-        if !showLeading {
-            print("👁️ [HSplitView3] Leading panel HIDDEN on init (showLeading=false)")
-        }
-
         // Establecer posiciones iniciales después de que el layout se calcule
+        // NO usar isHidden - solo establecer posiciones para colapsar visualmente
         DispatchQueue.main.async {
             // Leading panel
             if self.showLeading {
                 splitView.setPosition(self.leadingWidth, ofDividerAt: 0)
+                print("👁️ [HSplitView3] Leading panel VISIBLE on init at position \(self.leadingWidth)")
             } else {
                 splitView.setPosition(0, ofDividerAt: 0)
+                print("👁️ [HSplitView3] Leading panel COLLAPSED on init at position 0")
             }
 
             // Trailing panel
             let totalWidth = splitView.bounds.width
             if self.showTrailing {
                 splitView.setPosition(totalWidth - self.trailingWidth, ofDividerAt: 1)
+                print("👁️ [HSplitView3] Trailing panel VISIBLE on init at position \(totalWidth - self.trailingWidth)")
             } else {
                 splitView.setPosition(totalWidth, ofDividerAt: 1)
+                print("👁️ [HSplitView3] Trailing panel COLLAPSED on init at position \(totalWidth)")
             }
         }
 
@@ -199,6 +193,10 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         guard splitView.arrangedSubviews.count == 3 else { return }
 
         print("🔄 [HSplitView3] updateNSView - showLeading: \(showLeading), showTrailing: \(showTrailing), contentKey: \(contentKey)")
+
+        // Update coordinator state para que delegate tenga valores actuales
+        context.coordinator.showLeading = showLeading
+        context.coordinator.showTrailing = showTrailing
 
         // Update the content of hosting controllers
         if let leadingController = context.coordinator.leadingController {
@@ -212,53 +210,53 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
             trailingController.rootView = trailing
         }
 
-        // SIEMPRE establecer visibilidad y posición basándose en show*
-        // No verificar si cambió, porque actualizar rootView puede cambiar isHidden
-        let leadingView = splitView.arrangedSubviews[0]
-        let trailingView = splitView.arrangedSubviews[2]
+        // SIEMPRE establecer posición basándose en show* para colapsar/expandir paneles
+        // NO usar isHidden - dejar que NSSplitView colapse visualmente los paneles
         let totalWidth = splitView.bounds.width
 
-        // Leading panel
-        leadingView.isHidden = !showLeading
+        // Leading panel (sidebar)
         if showLeading {
             splitView.setPosition(leadingWidth, ofDividerAt: 0)
             print("👁️ [HSplitView3] Leading panel VISIBLE at position \(leadingWidth)")
         } else {
             splitView.setPosition(0, ofDividerAt: 0)
-            print("👁️ [HSplitView3] Leading panel HIDDEN")
+            print("👁️ [HSplitView3] Leading panel COLLAPSED at position 0")
         }
 
-        // Trailing panel
-        trailingView.isHidden = !showTrailing
+        // Trailing panel (preview)
         if showTrailing {
             splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: 1)
             print("👁️ [HSplitView3] Trailing panel VISIBLE at position \(totalWidth - trailingWidth)")
         } else {
             splitView.setPosition(totalWidth, ofDividerAt: 1)
-            print("👁️ [HSplitView3] Trailing panel HIDDEN")
+            print("👁️ [HSplitView3] Trailing panel COLLAPSED at position \(totalWidth)")
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(leadingWidth: $leadingWidth, trailingWidth: $trailingWidth)
+        Coordinator(leadingWidth: $leadingWidth, trailingWidth: $trailingWidth, showLeading: showLeading, showTrailing: showTrailing)
     }
 
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var leadingWidth: CGFloat
         @Binding var trailingWidth: CGFloat
+        var showLeading: Bool
+        var showTrailing: Bool
         var leadingController: NSHostingController<Leading>?
         var centerController: NSHostingController<Center>?
         var trailingController: NSHostingController<Trailing>?
 
-        init(leadingWidth: Binding<CGFloat>, trailingWidth: Binding<CGFloat>) {
+        init(leadingWidth: Binding<CGFloat>, trailingWidth: Binding<CGFloat>, showLeading: Bool, showTrailing: Bool) {
             self._leadingWidth = leadingWidth
             self._trailingWidth = trailingWidth
+            self.showLeading = showLeading
+            self.showTrailing = showTrailing
         }
 
         func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
             switch dividerIndex {
-            case 0: return 150   // Sidebar minimum
-            default: return 200  // Preview minimum
+            case 0: return showLeading ? 150 : 0   // Sidebar: 0 si colapsado, 150 si visible
+            default: return showTrailing ? 200 : 0  // Preview: 0 si colapsado, 200 si visible
             }
         }
 
@@ -334,20 +332,16 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
 
         print("📊 [VSplitView2] Added \(splitView.arrangedSubviews.count) subviews to split view")
 
-        // SIMPLE: Establecer visibilidad inicial
-        bottomController.view.isHidden = !showBottom
-
-        if !showBottom {
-            print("👁️ [VSplitView2] Bottom panel HIDDEN on init (showBottom=false)")
-        }
-
         // Establecer posiciones iniciales después de que el layout se calcule
+        // NO usar isHidden - solo establecer posiciones para colapsar visualmente
         DispatchQueue.main.async {
             let totalHeight = splitView.bounds.height
             if self.showBottom {
                 splitView.setPosition(totalHeight - self.bottomHeight, ofDividerAt: 0)
+                print("👁️ [VSplitView2] Bottom panel VISIBLE on init at position \(totalHeight - self.bottomHeight)")
             } else {
                 splitView.setPosition(totalHeight, ofDividerAt: 0)
+                print("👁️ [VSplitView2] Bottom panel COLLAPSED on init at position \(totalHeight)")
             }
         }
 
@@ -359,6 +353,9 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
 
         print("🔄 [VSplitView2] updateNSView - showBottom: \(showBottom), contentVersion: \(contentVersion)")
 
+        // Update coordinator state para que delegate tenga valores actuales
+        context.coordinator.showBottom = showBottom
+
         // Update the content of hosting controllers
         if let topController = context.coordinator.topController {
             topController.rootView = top
@@ -368,42 +365,42 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
             bottomController.rootView = bottom
         }
 
-        // SIEMPRE establecer visibilidad y posición basándose en show*
-        // No verificar si cambió, porque actualizar rootView puede cambiar isHidden
-        let bottomView = splitView.arrangedSubviews[1]
+        // SIEMPRE establecer posición basándose en show* para colapsar/expandir paneles
+        // NO usar isHidden - dejar que NSSplitView colapse visualmente los paneles
         let totalHeight = splitView.bounds.height
 
-        bottomView.isHidden = !showBottom
         if showBottom {
             splitView.setPosition(totalHeight - bottomHeight, ofDividerAt: 0)
             print("👁️ [VSplitView2] Bottom panel VISIBLE at position \(totalHeight - bottomHeight)")
         } else {
             splitView.setPosition(totalHeight, ofDividerAt: 0)
-            print("👁️ [VSplitView2] Bottom panel HIDDEN")
+            print("👁️ [VSplitView2] Bottom panel COLLAPSED at position \(totalHeight)")
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(bottomHeight: $bottomHeight)
+        Coordinator(bottomHeight: $bottomHeight, showBottom: showBottom)
     }
 
     class Coordinator: NSObject, NSSplitViewDelegate {
         @Binding var bottomHeight: CGFloat
+        var showBottom: Bool
         var topController: NSHostingController<Top>?
         var bottomController: NSHostingController<Bottom>?
 
-        init(bottomHeight: Binding<CGFloat>) {
+        init(bottomHeight: Binding<CGFloat>, showBottom: Bool) {
             self._bottomHeight = bottomHeight
+            self.showBottom = showBottom
         }
 
         func splitView(_ splitView: NSSplitView, constrainMinCoordinate proposedMinimumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
             let totalHeight = splitView.bounds.height
-            return totalHeight - 600  // Bottom panel maximum (600px)
+            return showBottom ? (totalHeight - 600) : totalHeight  // Si colapsado, permitir totalHeight
         }
 
         func splitView(_ splitView: NSSplitView, constrainMaxCoordinate proposedMaximumPosition: CGFloat, ofSubviewAt dividerIndex: Int) -> CGFloat {
             let totalHeight = splitView.bounds.height
-            return totalHeight - 100  // Bottom panel minimum (100px)
+            return showBottom ? (totalHeight - 100) : totalHeight  // Si colapsado, permitir totalHeight
         }
 
         func splitView(_ splitView: NSSplitView, shouldAdjustSizeOfSubview view: NSView) -> Bool {
