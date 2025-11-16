@@ -12,7 +12,7 @@ struct MarkdownFormattingToolbar: View {
     let onFormat: (MarkdownFormat) -> Void
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             // Headers
             Menu {
                 ForEach(1...6, id: \.self) { level in
@@ -23,17 +23,20 @@ struct MarkdownFormattingToolbar: View {
             } label: {
                 Image(systemName: "textformat.size")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton)
             .help("Headers")
 
             Divider()
                 .frame(height: 16)
+                .padding(.horizontal, 4)
 
             // Bold
             Button(action: { onFormat(.bold) }) {
                 Image(systemName: "bold")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Bold (⌘B)")
@@ -42,6 +45,7 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.italic) }) {
                 Image(systemName: "italic")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Italic (⌘I)")
@@ -50,6 +54,7 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.strikethrough) }) {
                 Image(systemName: "strikethrough")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Strikethrough")
@@ -58,12 +63,14 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.inlineCode) }) {
                 Image(systemName: "chevron.left.forwardslash.chevron.right")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Inline Code (⌘K)")
 
             Divider()
                 .frame(height: 16)
+                .padding(.horizontal, 4)
 
             // Lists
             Menu {
@@ -79,6 +86,7 @@ struct MarkdownFormattingToolbar: View {
             } label: {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .menuStyle(.borderlessButton)
             .help("Lists")
@@ -87,17 +95,20 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.blockquote) }) {
                 Image(systemName: "quote.opening")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Blockquote")
 
             Divider()
                 .frame(height: 16)
+                .padding(.horizontal, 4)
 
             // Code Block
             Button(action: { onFormat(.codeBlock) }) {
                 Image(systemName: "curlybraces")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Code Block (⌘⇧K)")
@@ -106,6 +117,7 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.link) }) {
                 Image(systemName: "link")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Link (⌘L)")
@@ -114,17 +126,20 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.image) }) {
                 Image(systemName: "photo")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Image")
 
             Divider()
                 .frame(height: 16)
+                .padding(.horizontal, 4)
 
             // Table
             Button(action: { onFormat(.table) }) {
                 Image(systemName: "tablecells")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Table")
@@ -133,6 +148,7 @@ struct MarkdownFormattingToolbar: View {
             Button(action: { onFormat(.horizontalRule) }) {
                 Image(systemName: "minus")
                     .font(.system(size: 13))
+                    .frame(width: 20, height: 20)
             }
             .buttonStyle(.plain)
             .help("Horizontal Rule")
@@ -167,9 +183,11 @@ extension NSTextView {
 
         let selectedRange = self.selectedRange()
         let selectedText = (self.string as NSString).substring(with: selectedRange)
+        let fullText = self.string as NSString
 
         var replacement = ""
         var newSelectionRange = selectedRange
+        var rangeToReplace = selectedRange
 
         switch format {
         case .header(let level):
@@ -181,60 +199,111 @@ extension NSTextView {
             if selectedText.isEmpty {
                 replacement = "**texto**"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: 5)
-            } else if selectedText.hasPrefix("**") && selectedText.hasSuffix("**") && selectedText.count > 4 {
-                // Toggle OFF: Quitar bold si ya lo tiene
-                let unwrapped = String(selectedText.dropFirst(2).dropLast(2))
-                replacement = unwrapped
-                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
-                // Toggle ON: Agregar bold
-                replacement = "**\(selectedText)**"
-                newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
+                // Verificar si hay ** ANTES y DESPUÉS de la selección
+                let beforeStart = max(0, selectedRange.location - 2)
+                let afterEnd = min(fullText.length, selectedRange.location + selectedRange.length + 2)
+
+                let hasBoldBefore = selectedRange.location >= 2 &&
+                                   fullText.substring(with: NSRange(location: beforeStart, length: 2)) == "**"
+                let hasBoldAfter = (selectedRange.location + selectedRange.length + 2) <= fullText.length &&
+                                  fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length, length: 2)) == "**"
+
+                if hasBoldBefore && hasBoldAfter {
+                    // Toggle OFF: Quitar los ** alrededor
+                    replacement = selectedText
+                    rangeToReplace = NSRange(location: beforeStart, length: selectedRange.length + 4)
+                    newSelectionRange = NSRange(location: beforeStart, length: selectedText.count)
+                } else {
+                    // Toggle ON: Agregar **
+                    replacement = "**\(selectedText)**"
+                    newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
+                }
             }
 
         case .italic:
             if selectedText.isEmpty {
                 replacement = "*texto*"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: 5)
-            } else if selectedText.hasPrefix("*") && selectedText.hasSuffix("*") && !selectedText.hasPrefix("**") && selectedText.count > 2 {
-                // Toggle OFF: Quitar italic si ya lo tiene (pero no si es bold **)
-                let unwrapped = String(selectedText.dropFirst(1).dropLast(1))
-                replacement = unwrapped
-                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
-                // Toggle ON: Agregar italic
-                replacement = "*\(selectedText)*"
-                newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
+                // Verificar si hay * ANTES y DESPUÉS de la selección (pero no **)
+                let beforeStart = max(0, selectedRange.location - 1)
+                let afterEnd = min(fullText.length, selectedRange.location + selectedRange.length + 1)
+
+                let charBefore = selectedRange.location >= 1 ?
+                                fullText.substring(with: NSRange(location: beforeStart, length: 1)) : ""
+                let charAfter = (selectedRange.location + selectedRange.length + 1) <= fullText.length ?
+                               fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length, length: 1)) : ""
+
+                // Verificar que NO sea ** (bold)
+                let charBeforeBefore = selectedRange.location >= 2 ?
+                                      fullText.substring(with: NSRange(location: selectedRange.location - 2, length: 1)) : ""
+                let charAfterAfter = (selectedRange.location + selectedRange.length + 2) <= fullText.length ?
+                                    fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length + 1, length: 1)) : ""
+
+                let hasItalicBefore = charBefore == "*" && charBeforeBefore != "*"
+                let hasItalicAfter = charAfter == "*" && charAfterAfter != "*"
+
+                if hasItalicBefore && hasItalicAfter {
+                    // Toggle OFF: Quitar los * alrededor
+                    replacement = selectedText
+                    rangeToReplace = NSRange(location: beforeStart, length: selectedRange.length + 2)
+                    newSelectionRange = NSRange(location: beforeStart, length: selectedText.count)
+                } else {
+                    // Toggle ON: Agregar *
+                    replacement = "*\(selectedText)*"
+                    newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
+                }
             }
 
         case .strikethrough:
             if selectedText.isEmpty {
                 replacement = "~~texto~~"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: 5)
-            } else if selectedText.hasPrefix("~~") && selectedText.hasSuffix("~~") && selectedText.count > 4 {
-                // Toggle OFF: Quitar strikethrough si ya lo tiene
-                let unwrapped = String(selectedText.dropFirst(2).dropLast(2))
-                replacement = unwrapped
-                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
-                // Toggle ON: Agregar strikethrough
-                replacement = "~~\(selectedText)~~"
-                newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
+                // Verificar si hay ~~ ANTES y DESPUÉS de la selección
+                let beforeStart = max(0, selectedRange.location - 2)
+
+                let hasStrikeBefore = selectedRange.location >= 2 &&
+                                     fullText.substring(with: NSRange(location: beforeStart, length: 2)) == "~~"
+                let hasStrikeAfter = (selectedRange.location + selectedRange.length + 2) <= fullText.length &&
+                                    fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length, length: 2)) == "~~"
+
+                if hasStrikeBefore && hasStrikeAfter {
+                    // Toggle OFF: Quitar los ~~ alrededor
+                    replacement = selectedText
+                    rangeToReplace = NSRange(location: beforeStart, length: selectedRange.length + 4)
+                    newSelectionRange = NSRange(location: beforeStart, length: selectedText.count)
+                } else {
+                    // Toggle ON: Agregar ~~
+                    replacement = "~~\(selectedText)~~"
+                    newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
+                }
             }
 
         case .inlineCode:
             if selectedText.isEmpty {
                 replacement = "`código`"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: 6)
-            } else if selectedText.hasPrefix("`") && selectedText.hasSuffix("`") && selectedText.count > 2 {
-                // Toggle OFF: Quitar inline code si ya lo tiene
-                let unwrapped = String(selectedText.dropFirst(1).dropLast(1))
-                replacement = unwrapped
-                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
-                // Toggle ON: Agregar inline code
-                replacement = "`\(selectedText)`"
-                newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
+                // Verificar si hay ` ANTES y DESPUÉS de la selección
+                let beforeStart = max(0, selectedRange.location - 1)
+
+                let hasCodeBefore = selectedRange.location >= 1 &&
+                                   fullText.substring(with: NSRange(location: beforeStart, length: 1)) == "`"
+                let hasCodeAfter = (selectedRange.location + selectedRange.length + 1) <= fullText.length &&
+                                  fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length, length: 1)) == "`"
+
+                if hasCodeBefore && hasCodeAfter {
+                    // Toggle OFF: Quitar los ` alrededor
+                    replacement = selectedText
+                    rangeToReplace = NSRange(location: beforeStart, length: selectedRange.length + 2)
+                    newSelectionRange = NSRange(location: beforeStart, length: selectedText.count)
+                } else {
+                    // Toggle ON: Agregar `
+                    replacement = "`\(selectedText)`"
+                    newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
+                }
             }
 
         case .codeBlock:
@@ -299,7 +368,7 @@ extension NSTextView {
         }
 
         // Apply the replacement
-        textStorage.replaceCharacters(in: selectedRange, with: replacement)
+        textStorage.replaceCharacters(in: rangeToReplace, with: replacement)
         self.setSelectedRange(newSelectionRange)
 
         // Trigger text change notification to update bindings

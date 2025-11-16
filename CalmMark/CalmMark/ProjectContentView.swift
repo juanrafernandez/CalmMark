@@ -501,15 +501,15 @@ struct PreviewPanelView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Header del panel de preview
-            HStack {
-                Image(systemName: "doc.richtext")
-                    .font(.system(size: 12))
+            HStack(spacing: 8) {
                 Text("Preview")
                     .font(.system(size: 12, weight: .semibold))
 
                 Text("(\(activeFile.content.count) chars)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
+
+                Spacer()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
