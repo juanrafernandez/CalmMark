@@ -212,31 +212,30 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
             trailingController.rootView = trailing
         }
 
-        // SIMPLE: Actualizar visibilidad Y posición (NSSplitView necesita ambos)
+        // SIEMPRE establecer visibilidad y posición basándose en show*
+        // No verificar si cambió, porque actualizar rootView puede cambiar isHidden
         let leadingView = splitView.arrangedSubviews[0]
         let trailingView = splitView.arrangedSubviews[2]
+        let totalWidth = splitView.bounds.width
 
         // Leading panel
-        if leadingView.isHidden != !showLeading {
-            leadingView.isHidden = !showLeading
-            if showLeading {
-                splitView.setPosition(leadingWidth, ofDividerAt: 0)
-            } else {
-                splitView.setPosition(0, ofDividerAt: 0)
-            }
-            print("👁️ [HSplitView3] Leading panel isHidden = \(!showLeading)")
+        leadingView.isHidden = !showLeading
+        if showLeading {
+            splitView.setPosition(leadingWidth, ofDividerAt: 0)
+            print("👁️ [HSplitView3] Leading panel VISIBLE at position \(leadingWidth)")
+        } else {
+            splitView.setPosition(0, ofDividerAt: 0)
+            print("👁️ [HSplitView3] Leading panel HIDDEN")
         }
 
         // Trailing panel
-        if trailingView.isHidden != !showTrailing {
-            trailingView.isHidden = !showTrailing
-            let totalWidth = splitView.bounds.width
-            if showTrailing {
-                splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: 1)
-            } else {
-                splitView.setPosition(totalWidth, ofDividerAt: 1)
-            }
-            print("👁️ [HSplitView3] Trailing panel isHidden = \(!showTrailing)")
+        trailingView.isHidden = !showTrailing
+        if showTrailing {
+            splitView.setPosition(totalWidth - trailingWidth, ofDividerAt: 1)
+            print("👁️ [HSplitView3] Trailing panel VISIBLE at position \(totalWidth - trailingWidth)")
+        } else {
+            splitView.setPosition(totalWidth, ofDividerAt: 1)
+            print("👁️ [HSplitView3] Trailing panel HIDDEN")
         }
     }
 
@@ -369,18 +368,18 @@ struct VSplitView2<Top: View, Bottom: View>: NSViewRepresentable {
             bottomController.rootView = bottom
         }
 
-        // SIMPLE: Actualizar visibilidad Y posición (NSSplitView necesita ambos)
+        // SIEMPRE establecer visibilidad y posición basándose en show*
+        // No verificar si cambió, porque actualizar rootView puede cambiar isHidden
         let bottomView = splitView.arrangedSubviews[1]
+        let totalHeight = splitView.bounds.height
 
-        if bottomView.isHidden != !showBottom {
-            bottomView.isHidden = !showBottom
-            let totalHeight = splitView.bounds.height
-            if showBottom {
-                splitView.setPosition(totalHeight - bottomHeight, ofDividerAt: 0)
-            } else {
-                splitView.setPosition(totalHeight, ofDividerAt: 0)
-            }
-            print("👁️ [VSplitView2] Bottom panel isHidden = \(!showBottom)")
+        bottomView.isHidden = !showBottom
+        if showBottom {
+            splitView.setPosition(totalHeight - bottomHeight, ofDividerAt: 0)
+            print("👁️ [VSplitView2] Bottom panel VISIBLE at position \(totalHeight - bottomHeight)")
+        } else {
+            splitView.setPosition(totalHeight, ofDividerAt: 0)
+            print("👁️ [VSplitView2] Bottom panel HIDDEN")
         }
     }
 
