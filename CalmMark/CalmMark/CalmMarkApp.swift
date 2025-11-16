@@ -138,8 +138,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             tabManager.saveAllFiles()
             return .terminateNow
         case .alertSecondButtonReturn: // Don't Save
-            print("❌ [AppDelegate] User chose: Don't Save (Hot Exit will preserve content)")
-            // Hot Exit guardará automáticamente el contenido sin guardar
+            print("🗑️ [AppDelegate] User chose: Don't Save - discarding all changes")
+            // Limpiar Hot Exit cache y recargar archivos desde el disco
+            tabManager.discardAllChanges()
             return .terminateNow
         default: // Cancel
             print("🚫 [AppDelegate] User chose: Cancel")
@@ -197,8 +198,9 @@ class ProjectWindowDelegate: NSObject, NSWindowDelegate {
             tabManager.saveAllFiles()
             return true
         case .alertSecondButtonReturn: // Don't Save
-            print("❌ [WindowDelegate] User chose: Don't Save (Hot Exit will preserve content)")
-            // Hot Exit guardará automáticamente el contenido sin guardar
+            print("🗑️ [WindowDelegate] User chose: Don't Save - discarding all changes")
+            // Limpiar Hot Exit cache y recargar archivos desde el disco
+            tabManager.discardAllChanges()
             return true
         default: // Cancel
             print("🚫 [WindowDelegate] User chose: Cancel - window will NOT close")

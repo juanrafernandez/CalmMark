@@ -273,4 +273,26 @@ class TabManager: ObservableObject {
             }
         }
     }
+
+    func discardAllChanges() {
+        print("🗑️ [TabManager] Discarding all unsaved changes...")
+
+        for file in openFiles where file.isDirty {
+            do {
+                print("   🔄 [TabManager] Reloading \(file.name) from disk")
+
+                // 1. Limpiar Hot Exit cache
+                HotExitManager.shared.clearCache(for: file.url)
+
+                // 2. Recargar contenido desde el disco
+                try file.reload()
+
+                print("   ✅ [TabManager] Discarded changes for: \(file.name)")
+            } catch {
+                print("   ❌ [TabManager] Error reloading file \(file.name): \(error)")
+            }
+        }
+
+        print("✅ [TabManager] All changes discarded successfully")
+    }
 }
