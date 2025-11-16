@@ -244,6 +244,12 @@ struct ProjectContentView: View {
         .onChange(of: tabManager.activeFile) { oldFile, newFile in
             if let file = newFile {
                 print("🔄 [ProjectContentView] Active file changed to: \(file.name)")
+
+                // Opción A: Auto-mostrar preview cuando se abre el PRIMER archivo
+                if oldFile == nil && !showPreviewPanel {
+                    showPreviewPanel = true
+                    print("📺 [ProjectContentView] Auto-showing preview panel for first file")
+                }
             } else {
                 print("🔄 [ProjectContentView] Active file cleared")
             }
@@ -300,7 +306,7 @@ struct ProjectToolbarView: View {
             }) {
                 Image(systemName: "sidebar.right")
                     .font(.system(size: 14))
-                    .foregroundColor(showPreviewPanel ? .accentColor : .secondary)
+                    .foregroundColor((showPreviewPanel && tabManager.activeFile != nil) ? .accentColor : .secondary)
             }
             .buttonStyle(.plain)
             .help("Toggle Preview Panel (⌥⌘9)")
