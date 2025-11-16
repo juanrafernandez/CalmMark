@@ -199,6 +199,7 @@ struct ProjectContentView: View {
         .onAppear {
             // Conectar TabManager con AppDelegate para interceptar cierre de app
             tabManagerBridge.tabManager = tabManager
+            print("🔗 [ProjectContentView] TabManager connected to AppDelegate bridge")
 
             // Restaurar última carpeta y archivo desde bookmarks
             if fileManager.restoreLastFolder() {

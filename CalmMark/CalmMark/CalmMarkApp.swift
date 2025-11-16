@@ -46,18 +46,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     let tabManagerBridge = TabManagerBridge()
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        print("🚪 [AppDelegate] applicationShouldTerminate called")
+
         // Verificar si hay archivos con cambios sin guardar
         guard let tabManager = tabManagerBridge.tabManager else {
+            print("⚠️ [AppDelegate] TabManager is nil, terminating immediately")
             return .terminateNow
         }
 
+        print("📋 [AppDelegate] TabManager connected, checking dirty files...")
         let dirtyFiles = tabManager.openFiles.filter { $0.isDirty }
+        print("📋 [AppDelegate] Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total")
 
         if dirtyFiles.isEmpty {
+            print("✅ [AppDelegate] No dirty files, terminating")
             return .terminateNow
         }
 
         // Mostrar diálogo al usuario
+        print("🔔 [AppDelegate] Showing quit confirmation dialog...")
         let alert = NSAlert()
         alert.messageText = "Do you want to save changes before quitting?"
         alert.informativeText = "\(dirtyFiles.count) file(s) have unsaved changes."
@@ -70,12 +77,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         switch response {
         case .alertFirstButtonReturn: // Save All
+            print("💾 [AppDelegate] User chose: Save All")
             tabManager.saveAllFiles()
             return .terminateNow
         case .alertSecondButtonReturn: // Don't Save
+            print("❌ [AppDelegate] User chose: Don't Save (Hot Exit will preserve content)")
             // Hot Exit guardará automáticamente el contenido sin guardar
             return .terminateNow
         default: // Cancel
+            print("🚫 [AppDelegate] User chose: Cancel")
             return .terminateCancel
         }
     }
