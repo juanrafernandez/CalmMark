@@ -109,41 +109,9 @@ struct ProjectContentView: View {
                         }
                     } trailing: {
                         // Trailing: Preview
-                        VStack(spacing: 0) {
-                            // Header del panel de preview
-                            HStack {
-                                Image(systemName: "doc.richtext")
-                                    .font(.system(size: 12))
-                                Text("Preview")
-                                    .font(.system(size: 12, weight: .semibold))
-
-                                Text("(\(tabManager.activeFile?.content.count ?? 0) chars)")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-
-                                Spacer()
-                                Button(action: {
-                                    withAnimation {
-                                        showPreviewPanel = false
-                                    }
-                                }) {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(Color(NSColor.controlBackgroundColor))
-
-                            Divider()
-
-                            if let activeFile = tabManager.activeFile {
-                                PreviewView(markdown: activeFile.content, settings: settings)
-                                    .onAppear {
-                                        LogManager.shared.log(.info, "Panel de Preview apareció para archivo: \(activeFile.name) con \(activeFile.content.count) caracteres", context: "ProjectContent")
-                                    }
+                        if let activeFile = tabManager.activeFile {
+                            PreviewPanelView(activeFile: activeFile, settings: settings) {
+                                showPreviewPanel = false
                             }
                         }
                     }
@@ -514,6 +482,51 @@ struct WelcomeView: View {
                 // Open just the file's parent directory
                 fileManager.setRootFolder(url.deletingLastPathComponent())
             }
+        }
+    }
+}
+
+// MARK: - Preview Panel View
+
+struct PreviewPanelView: View {
+    @ObservedObject var activeFile: OpenFile
+    @ObservedObject var settings: AppSettings
+    var onClose: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Header del panel de preview
+            HStack {
+                Image(systemName: "doc.richtext")
+                    .font(.system(size: 12))
+                Text("Preview")
+                    .font(.system(size: 12, weight: .semibold))
+
+                Text("(\(activeFile.content.count) chars)")
+                    .font(.system(size: 10))
+                    .foregroundColor(.secondary)
+
+                Spacer()
+                Button(action: {
+                    withAnimation {
+                        onClose()
+                    }
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
+
+            Divider()
+
+            // Preview actualizado en tiempo real
+            PreviewView(markdown: activeFile.content, settings: settings)
+                .id(activeFile.id) // Forzar recreación cuando cambia el archivo
         }
     }
 }
