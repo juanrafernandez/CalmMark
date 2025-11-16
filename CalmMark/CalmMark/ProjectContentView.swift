@@ -16,7 +16,7 @@ struct ProjectContentView: View {
     @State private var viewMode: ViewMode = AppSettings.shared.defaultViewMode
     @State private var showSidebar: Bool = true
     @State private var sidebarWidth: CGFloat = 250
-    @State private var showPreviewPanel: Bool = true
+    @State private var showPreviewPanel: Bool = false  // Starts hidden, auto-shows when first file opens
     @State private var previewPanelWidth: CGFloat = 350
     @State private var showLogPanel: Bool = false
     @State private var logPanelHeight: CGFloat = 200
