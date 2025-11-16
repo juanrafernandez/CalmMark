@@ -510,18 +510,6 @@ struct PreviewPanelView: View {
                 Text("(\(activeFile.content.count) chars)")
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
-
-                Spacer()
-                Button(action: {
-                    withAnimation {
-                        onClose()
-                    }
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)

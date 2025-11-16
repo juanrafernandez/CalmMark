@@ -181,7 +181,13 @@ extension NSTextView {
             if selectedText.isEmpty {
                 replacement = "**texto**"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: 5)
+            } else if selectedText.hasPrefix("**") && selectedText.hasSuffix("**") && selectedText.count > 4 {
+                // Toggle OFF: Quitar bold si ya lo tiene
+                let unwrapped = String(selectedText.dropFirst(2).dropLast(2))
+                replacement = unwrapped
+                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
+                // Toggle ON: Agregar bold
                 replacement = "**\(selectedText)**"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
             }
@@ -190,7 +196,13 @@ extension NSTextView {
             if selectedText.isEmpty {
                 replacement = "*texto*"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: 5)
+            } else if selectedText.hasPrefix("*") && selectedText.hasSuffix("*") && !selectedText.hasPrefix("**") && selectedText.count > 2 {
+                // Toggle OFF: Quitar italic si ya lo tiene (pero no si es bold **)
+                let unwrapped = String(selectedText.dropFirst(1).dropLast(1))
+                replacement = unwrapped
+                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
+                // Toggle ON: Agregar italic
                 replacement = "*\(selectedText)*"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
             }
@@ -199,7 +211,13 @@ extension NSTextView {
             if selectedText.isEmpty {
                 replacement = "~~texto~~"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: 5)
+            } else if selectedText.hasPrefix("~~") && selectedText.hasSuffix("~~") && selectedText.count > 4 {
+                // Toggle OFF: Quitar strikethrough si ya lo tiene
+                let unwrapped = String(selectedText.dropFirst(2).dropLast(2))
+                replacement = unwrapped
+                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
+                // Toggle ON: Agregar strikethrough
                 replacement = "~~\(selectedText)~~"
                 newSelectionRange = NSRange(location: selectedRange.location + 2, length: selectedText.count)
             }
@@ -208,7 +226,13 @@ extension NSTextView {
             if selectedText.isEmpty {
                 replacement = "`código`"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: 6)
+            } else if selectedText.hasPrefix("`") && selectedText.hasSuffix("`") && selectedText.count > 2 {
+                // Toggle OFF: Quitar inline code si ya lo tiene
+                let unwrapped = String(selectedText.dropFirst(1).dropLast(1))
+                replacement = unwrapped
+                newSelectionRange = NSRange(location: selectedRange.location, length: unwrapped.count)
             } else {
+                // Toggle ON: Agregar inline code
                 replacement = "`\(selectedText)`"
                 newSelectionRange = NSRange(location: selectedRange.location + 1, length: selectedText.count)
             }
