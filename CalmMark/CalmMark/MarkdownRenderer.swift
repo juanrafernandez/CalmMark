@@ -303,8 +303,9 @@ class MarkdownRenderer {
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-            // Check if line is already HTML tagged
+            // Check if line is already HTML tagged or is a code block placeholder
             let isTagged = trimmed.hasPrefix("<") && trimmed.hasSuffix(">")
+            let isPlaceholder = trimmed.contains("___CODEBLOCK_")
 
             if trimmed.isEmpty {
                 if !paragraphLines.isEmpty {
@@ -312,7 +313,7 @@ class MarkdownRenderer {
                     paragraphLines = []
                 }
                 output.append("")
-            } else if isTagged {
+            } else if isTagged || isPlaceholder {
                 if !paragraphLines.isEmpty {
                     output.append("<p>\(paragraphLines.joined(separator: " "))</p>")
                     paragraphLines = []
