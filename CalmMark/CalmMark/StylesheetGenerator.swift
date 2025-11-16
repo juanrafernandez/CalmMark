@@ -108,6 +108,8 @@ class StylesheetGenerator {
             margin-bottom: 16px;
             overflow-x: auto;
             line-height: 1.45;
+            white-space: pre;
+            word-wrap: normal;
         }
 
         pre code {
@@ -115,11 +117,10 @@ class StylesheetGenerator {
             border: none;
             padding: 0;
             font-size: 100%;
-            display: inline;
-            max-width: auto;
+            display: block;
             overflow: visible;
             line-height: inherit;
-            word-wrap: normal;
+            white-space: pre;
         }
 
         /* Lists */
@@ -127,6 +128,15 @@ class StylesheetGenerator {
             margin-top: 0;
             margin-bottom: 16px;
             padding-left: 2em;
+        }
+
+        ol {
+            list-style-type: decimal;
+            counter-reset: item;
+        }
+
+        ol li {
+            display: list-item;
         }
 
         li {

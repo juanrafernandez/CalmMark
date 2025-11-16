@@ -144,10 +144,13 @@ class MarkdownRenderer {
         for line in lines {
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
-                if !inList {
+                if !inList || listType != "task" {
+                    if inList {
+                        output.append(listType == "ul" ? "</ul>" : "</ol>")
+                    }
                     output.append("<ul class=\"task-list\">")
                     inList = true
-                    listType = "ul"
+                    listType = "task"
                 }
                 let checked = line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
                 let item = line.dropFirst(6) // Skip "- [x] "
@@ -157,27 +160,23 @@ class MarkdownRenderer {
             // Regular unordered lists
             else if line.hasPrefix("- ") || line.hasPrefix("* ") {
                 if !inList || listType != "ul" {
-                    if inList && listType == "ol" {
-                        output.append("</ol>")
+                    if inList {
+                        output.append(listType == "task" ? "</ul>" : (listType == "ol" ? "</ol>" : "</ul>"))
                     }
-                    if !inList {
-                        output.append("<ul>")
-                    }
+                    output.append("<ul>")
                     inList = true
                     listType = "ul"
                 }
                 let item = line.dropFirst(2)
                 output.append("<li>\(item)</li>")
             }
-            // Ordered lists
-            else if line.hasPrefix("1. ") || line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
+            // Ordered lists (match any number followed by .)
+            else if line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
                 if !inList || listType != "ol" {
-                    if inList && listType == "ul" {
-                        output.append("</ul>")
+                    if inList {
+                        output.append(listType == "task" || listType == "ul" ? "</ul>" : "</ol>")
                     }
-                    if !inList {
-                        output.append("<ol>")
-                    }
+                    output.append("<ol>")
                     inList = true
                     listType = "ol"
                 }
@@ -189,7 +188,11 @@ class MarkdownRenderer {
             // Non-list line
             else {
                 if inList {
-                    output.append(listType == "ul" ? "</ul>" : "</ol>")
+                    if listType == "task" || listType == "ul" {
+                        output.append("</ul>")
+                    } else {
+                        output.append("</ol>")
+                    }
                     inList = false
                     listType = ""
                 }
@@ -198,7 +201,11 @@ class MarkdownRenderer {
         }
 
         if inList {
-            output.append(listType == "ul" ? "</ul>" : "</ol>")
+            if listType == "task" || listType == "ul" {
+                output.append("</ul>")
+            } else {
+                output.append("</ol>")
+            }
         }
 
         return output.joined(separator: "\n")
