@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import Combine
 
 // MARK: - Open File Model
 
@@ -16,6 +17,7 @@ class OpenFile: Identifiable, ObservableObject, Equatable {
     @Published var content: String
     @Published var isDirty: Bool = false
     @Published var isNew: Bool
+    var cancellables = Set<AnyCancellable>()
 
     var name: String {
         url.lastPathComponent
@@ -38,11 +40,58 @@ class OpenFile: Identifiable, ObservableObject, Equatable {
     func save() throws {
         try content.write(to: url, atomically: true, encoding: .utf8)
         isDirty = false
+
+        // Limpiar hot exit cache cuando se guarda
+        HotExitManager.shared.clearCache(for: url)
     }
 
     func reload() throws {
         content = try String(contentsOf: url, encoding: .utf8)
         isDirty = false
+
+        // Limpiar hot exit cache cuando se recarga
+        HotExitManager.shared.clearCache(for: url)
+    }
+}
+
+// MARK: - Hot Exit Manager
+
+class HotExitManager {
+    static let shared = HotExitManager()
+    private let userDefaults = UserDefaults.standard
+    private let prefix = "hotExit_"
+
+    private init() {}
+
+    func saveUnsavedContent(for url: URL, content: String, isDirty: Bool) {
+        guard isDirty else {
+            // Si no está dirty, limpiar cualquier cache
+            clearCache(for: url)
+            return
+        }
+
+        let key = hotExitKey(for: url)
+        userDefaults.set(content, forKey: key)
+        print("💾 [HotExit] Saved unsaved content for: \(url.lastPathComponent)")
+    }
+
+    func loadUnsavedContent(for url: URL) -> String? {
+        let key = hotExitKey(for: url)
+        if let cachedContent = userDefaults.string(forKey: key) {
+            print("🔄 [HotExit] Restored unsaved content for: \(url.lastPathComponent)")
+            return cachedContent
+        }
+        return nil
+    }
+
+    func clearCache(for url: URL) {
+        let key = hotExitKey(for: url)
+        userDefaults.removeObject(forKey: key)
+        print("🗑️ [HotExit] Cleared cache for: \(url.lastPathComponent)")
+    }
+
+    private func hotExitKey(for url: URL) -> String {
+        return prefix + url.path
     }
 }
 
@@ -64,14 +113,43 @@ class TabManager: ObservableObject {
 
         // Load and open
         do {
-            let content = try String(contentsOf: url, encoding: .utf8)
+            var content = try String(contentsOf: url, encoding: .utf8)
+            var isDirty = false
+
+            // Hot Exit: Check if there's unsaved content
+            if let cachedContent = HotExitManager.shared.loadUnsavedContent(for: url) {
+                content = cachedContent
+                isDirty = true
+                LogManager.shared.log(.info, "Restaurado contenido sin guardar desde Hot Exit", context: "TabManager")
+            }
+
             let newFile = OpenFile(url: url, content: content)
+            newFile.isDirty = isDirty
             openFiles.append(newFile)
             activeFile = newFile
+
+            // Observar cambios en el contenido para Hot Exit
+            setupHotExitObserver(for: newFile)
+
             LogManager.shared.log(.success, "Archivo abierto exitosamente: \(url.lastPathComponent) (\(content.count) caracteres)", context: "TabManager")
         } catch {
             LogManager.shared.log(.error, "Error al abrir archivo \(url.lastPathComponent): \(error.localizedDescription)", context: "TabManager")
         }
+    }
+
+    private func setupHotExitObserver(for file: OpenFile) {
+        // Observar cambios en content e isDirty
+        file.objectWillChange.sink { [weak self, weak file] _ in
+            guard let file = file else { return }
+            // Guardar en hot exit cuando cambia el contenido
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                HotExitManager.shared.saveUnsavedContent(
+                    for: file.url,
+                    content: file.content,
+                    isDirty: file.isDirty
+                )
+            }
+        }.store(in: &file.cancellables)
     }
 
     func closeFile(_ file: OpenFile) {
@@ -95,10 +173,14 @@ class TabManager: ObservableObject {
                     return
                 }
             case .alertSecondButtonReturn: // Don't Save
-                break
+                // Limpiar hot exit cache cuando el usuario decide no guardar
+                HotExitManager.shared.clearCache(for: file.url)
             default: // Cancel
                 return
             }
+        } else {
+            // Si no está dirty, limpiar hot exit cache
+            HotExitManager.shared.clearCache(for: file.url)
         }
 
         // Remove from array
@@ -142,10 +224,18 @@ class TabManager: ObservableObject {
                     }
                 }
             case .alertSecondButtonReturn: // Don't Save
-                break
+                // Limpiar hot exit cache para todos los archivos dirty
+                for file in dirtyFiles {
+                    HotExitManager.shared.clearCache(for: file.url)
+                }
             default: // Cancel
                 return
             }
+        }
+
+        // Limpiar hot exit cache para archivos no dirty también
+        for file in openFiles where !file.isDirty {
+            HotExitManager.shared.clearCache(for: file.url)
         }
 
         openFiles.removeAll()
