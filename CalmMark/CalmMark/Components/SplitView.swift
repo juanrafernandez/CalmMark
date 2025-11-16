@@ -235,6 +235,7 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
         // Trailing panel (preview)
         let trailingView = splitView.arrangedSubviews[2]
         let shouldCollapseTrailing = !showTrailing
+        print("🔍 [HSplitView3] Trailing panel - shouldCollapse: \(shouldCollapseTrailing), isHidden: \(trailingView.isHidden)")
         if shouldCollapseTrailing != trailingView.isHidden {
             print("🔄 [HSplitView3] Trailing panel state change: hidden=\(trailingView.isHidden) -> \(shouldCollapseTrailing)")
             if shouldCollapseTrailing {
@@ -249,6 +250,8 @@ struct HSplitView3<Leading: View, Center: View, Trailing: View>: NSViewRepresent
                 splitView.setPosition(position, ofDividerAt: 1)
                 print("👁️ [HSplitView3] Expanding trailing panel - totalWidth:\(totalWidth), trailingWidth:\(trailingWidth), position:\(position)")
             }
+        } else {
+            print("ℹ️ [HSplitView3] Trailing panel already in correct state (isHidden=\(trailingView.isHidden))")
         }
     }
 
