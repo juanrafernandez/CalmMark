@@ -35,6 +35,7 @@ struct ProjectContentView: View {
                 showSidebar: $showSidebar,
                 showPreviewPanel: $showPreviewPanel,
                 showLogPanel: $showLogPanel,
+                updateTrigger: $updateTrigger,
                 fileManager: fileManager,
                 tabManager: tabManager,
                 onExportHTML: {
@@ -170,16 +171,22 @@ struct ProjectContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: .toggleSidebar)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
                 showSidebar.toggle()
+                updateTrigger += 1
+                print("🔄 [ProjectContentView] Sidebar toggled: \(showSidebar), trigger: \(updateTrigger)")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .togglePreviewPanel)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
                 showPreviewPanel.toggle()
+                updateTrigger += 1
+                print("🔄 [ProjectContentView] Preview panel toggled: \(showPreviewPanel), trigger: \(updateTrigger)")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .toggleLogPanel)) { _ in
             withAnimation(.easeInOut(duration: 0.2)) {
                 showLogPanel.toggle()
+                updateTrigger += 1
+                print("🔄 [ProjectContentView] Log panel toggled: \(showLogPanel), trigger: \(updateTrigger)")
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .openFolder)) { _ in
@@ -257,6 +264,7 @@ struct ProjectToolbarView: View {
     @Binding var showSidebar: Bool
     @Binding var showPreviewPanel: Bool
     @Binding var showLogPanel: Bool
+    @Binding var updateTrigger: Int
     let fileManager: FileSystemManager
     let tabManager: TabManager
     var onExportHTML: () -> Void
@@ -270,6 +278,8 @@ struct ProjectToolbarView: View {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showSidebar.toggle()
+                    updateTrigger += 1
+                    print("🔄 [Toolbar] Sidebar toggled: \(showSidebar), trigger: \(updateTrigger)")
                 }
             }) {
                 Image(systemName: "sidebar.left")
@@ -284,6 +294,8 @@ struct ProjectToolbarView: View {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showPreviewPanel.toggle()
+                    updateTrigger += 1
+                    print("🔄 [ProjectContentView] Preview panel toggled: \(showPreviewPanel), trigger: \(updateTrigger)")
                 }
             }) {
                 Image(systemName: "sidebar.right")
@@ -297,6 +309,8 @@ struct ProjectToolbarView: View {
             Button(action: {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showLogPanel.toggle()
+                    updateTrigger += 1
+                    print("🔄 [Toolbar] Log panel toggled: \(showLogPanel), trigger: \(updateTrigger)")
                 }
             }) {
                 HStack(spacing: 4) {
