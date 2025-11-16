@@ -140,81 +140,94 @@ class MarkdownRenderer {
         var output: [String] = []
         var inList = false
         var listType = ""
+        var inListItem = false
+        var listItemContent: [String] = []
 
-        for line in lines {
+        func closeListItem() {
+            if inListItem {
+                output.append(listItemContent.joined(separator: "\n") + "</li>")
+                listItemContent = []
+                inListItem = false
+            }
+        }
+
+        func closeList() {
+            closeListItem()
+            if inList {
+                if listType == "task" || listType == "ul" {
+                    output.append("</ul>")
+                } else {
+                    output.append("</ol>")
+                }
+                inList = false
+                listType = ""
+            }
+        }
+
+        for i in 0..<lines.count {
+            let line = lines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
+            let isIndented = line.hasPrefix(" ") || line.hasPrefix("\t")
 
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
                 if !inList || listType != "task" {
-                    if inList {
-                        output.append(listType == "ul" ? "</ul>" : "</ol>")
-                    }
+                    closeList()
                     output.append("<ul class=\"task-list\">")
                     inList = true
                     listType = "task"
+                } else {
+                    closeListItem()
                 }
                 let checked = line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
                 let item = line.dropFirst(6) // Skip "- [x] "
                 let checkbox = checked ? "<input type=\"checkbox\" checked disabled />" : "<input type=\"checkbox\" disabled />"
-                output.append("<li class=\"task-list-item\">\(checkbox) \(item)</li>")
+                listItemContent = ["<li class=\"task-list-item\">\(checkbox) \(item)"]
+                inListItem = true
             }
             // Regular unordered lists
             else if line.hasPrefix("- ") || line.hasPrefix("* ") {
                 if !inList || listType != "ul" {
-                    if inList {
-                        output.append(listType == "task" ? "</ul>" : (listType == "ol" ? "</ol>" : "</ul>"))
-                    }
+                    closeList()
                     output.append("<ul>")
                     inList = true
                     listType = "ul"
+                } else {
+                    closeListItem()
                 }
                 let item = line.dropFirst(2)
-                output.append("<li>\(item)</li>")
+                listItemContent = ["<li>\(item)"]
+                inListItem = true
             }
             // Ordered lists (match any number followed by .)
             else if line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
                 if !inList || listType != "ol" {
-                    if inList {
-                        output.append(listType == "task" || listType == "ul" ? "</ul>" : "</ol>")
-                    }
+                    closeList()
                     output.append("<ol>")
                     inList = true
                     listType = "ol"
+                } else {
+                    closeListItem()
                 }
                 if let dotIndex = line.firstIndex(of: ".") {
                     let item = line[line.index(after: dotIndex)...].trimmingCharacters(in: .whitespaces)
-                    output.append("<li>\(item)</li>")
+                    listItemContent = ["<li>\(item)"]
+                    inListItem = true
                 }
             }
-            // Blank line or HTML tags - keep list open if we're in one
-            else if trimmed.isEmpty || trimmed.hasPrefix("<") {
-                // Don't close the list on blank lines or HTML content
-                // This allows list items with code blocks or nested content
-                output.append(line)
+            // If we're in a list item and this is indented content or HTML, add to item
+            else if inListItem && (isIndented || trimmed.hasPrefix("<") || trimmed.isEmpty) {
+                listItemContent.append(line)
             }
-            // Non-list line with actual content
+            // Non-list content
             else {
-                if inList {
-                    if listType == "task" || listType == "ul" {
-                        output.append("</ul>")
-                    } else {
-                        output.append("</ol>")
-                    }
-                    inList = false
-                    listType = ""
-                }
+                closeList()
                 output.append(line)
             }
         }
 
-        if inList {
-            if listType == "task" || listType == "ul" {
-                output.append("</ul>")
-            } else {
-                output.append("</ol>")
-            }
-        }
+        // Close any remaining open items/lists
+        closeList()
 
         return output.joined(separator: "\n")
     }
