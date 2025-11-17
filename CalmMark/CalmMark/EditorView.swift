@@ -48,6 +48,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     @Binding var text: String
     var settings: AppSettings
     @Binding var textViewRef: NSTextView?
+    @ObservedObject var scrollSync = ScrollSyncManager.shared
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -81,10 +82,21 @@ struct MarkdownTextEditor: NSViewRepresentable {
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
+        // Observe scroll events
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollViewDidScroll(_:)),
+            name: NSScrollView.didLiveScrollNotification,
+            object: scrollView
+        )
+
         // Store reference for toolbar access
         DispatchQueue.main.async {
             textViewRef = textView
         }
+
+        // Store scrollView reference in coordinator
+        context.coordinator.scrollView = scrollView
 
         return scrollView
     }
@@ -113,6 +125,11 @@ struct MarkdownTextEditor: NSViewRepresentable {
         if settings.syntaxHighlighting {
             applySyntaxHighlighting(to: textView)
         }
+
+        // Sync scroll from preview
+        if scrollSync.isEnabled && scrollSync.lastScrollSource == .preview {
+            context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -121,9 +138,58 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: MarkdownTextEditor
+        weak var scrollView: NSScrollView?
+        private var isSyncing = false
 
         init(_ parent: MarkdownTextEditor) {
             self.parent = parent
+        }
+
+        @objc func scrollViewDidScroll(_ notification: Notification) {
+            guard !isSyncing,
+                  let scrollView = notification.object as? NSScrollView,
+                  let documentView = scrollView.documentView else {
+                return
+            }
+
+            let visibleRect = scrollView.contentView.documentVisibleRect
+            let documentHeight = documentView.bounds.height
+            let scrollViewHeight = visibleRect.height
+
+            guard documentHeight > scrollViewHeight else { return }
+
+            let scrollPercentage = visibleRect.origin.y / (documentHeight - scrollViewHeight)
+            let clampedPercentage = max(0, min(1, scrollPercentage))
+
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .editor)
+        }
+
+        func syncScroll(to percentage: Double) {
+            guard let scrollView = scrollView,
+                  let documentView = scrollView.documentView else {
+                return
+            }
+
+            isSyncing = true
+
+            let documentHeight = documentView.bounds.height
+            let scrollViewHeight = scrollView.contentView.bounds.height
+
+            guard documentHeight > scrollViewHeight else {
+                isSyncing = false
+                return
+            }
+
+            let targetY = percentage * (documentHeight - scrollViewHeight)
+            let clampedY = max(0, min(documentHeight - scrollViewHeight, targetY))
+
+            var newOrigin = scrollView.contentView.bounds.origin
+            newOrigin.y = clampedY
+            scrollView.contentView.setBoundsOrigin(newOrigin)
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isSyncing = false
+            }
         }
 
         func textDidChange(_ notification: Notification) {
