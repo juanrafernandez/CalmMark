@@ -126,8 +126,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
             applySyntaxHighlighting(to: textView)
         }
 
-        // Sync scroll from preview
-        if scrollSync.isEnabled && scrollSync.lastScrollSource == .preview {
+        // Sync scroll from preview (only if user is not manually scrolling)
+        if scrollSync.isEnabled && scrollSync.lastScrollSource == .preview && !scrollSync.isUserScrolling {
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }

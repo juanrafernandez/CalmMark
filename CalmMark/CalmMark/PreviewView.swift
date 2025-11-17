@@ -157,8 +157,8 @@ struct WebViewWrapper: NSViewRepresentable {
 
         webView.loadHTMLString(html, baseURL: nil)
 
-        // Sync scroll from editor
-        if scrollSync.isEnabled && scrollSync.lastScrollSource == .editor {
+        // Sync scroll from editor (only if user is not manually scrolling)
+        if scrollSync.isEnabled && scrollSync.lastScrollSource == .editor && !scrollSync.isUserScrolling {
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -214,8 +214,8 @@ struct WebViewWrapper: NSViewRepresentable {
                 }
             }
 
-            // Restore scroll position after reload
-            if ScrollSyncManager.shared.isEnabled {
+            // Restore scroll position after reload (only if user is not manually scrolling)
+            if ScrollSyncManager.shared.isEnabled && !ScrollSyncManager.shared.isUserScrolling {
                 self.syncScroll(to: ScrollSyncManager.shared.scrollPercentage)
             }
         }
