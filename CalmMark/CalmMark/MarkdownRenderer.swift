@@ -130,9 +130,15 @@ class MarkdownRenderer {
 
     private static func renderCodeBlocks(_ text: String) -> String {
         var result = text
-        let pattern = "```([a-zA-Z]*)\\n([\\s\\S]*?)```"
+        // Updated pattern to match GFM spec:
+        // - Optional indentation (0-3 spaces)
+        // - 3+ backticks
+        // - Optional info string (language)
+        // - Content
+        // - Closing fence with same or more backticks
+        let pattern = "^[ ]{0,3}```([a-zA-Z0-9]*)[ ]*\\n([\\s\\S]*?)^[ ]{0,3}```[ ]*$"
 
-        if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+        if let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
             for match in matches.reversed() {
@@ -144,7 +150,12 @@ class MarkdownRenderer {
                     let language = String(result[languageRange])
                     var code = String(result[codeRange])
 
-                    // Preserve newlines by ensuring they're in the HTML
+                    // Remove trailing newline if present (the one before closing ```)
+                    if code.hasSuffix("\n") {
+                        code = String(code.dropLast())
+                    }
+
+                    // Preserve newlines by escaping HTML
                     code = code.htmlEscaped
 
                     // Create HTML block - preserve all whitespace including newlines
