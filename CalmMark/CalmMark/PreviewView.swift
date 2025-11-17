@@ -78,6 +78,7 @@ struct PreviewView: View {
 struct WebViewWrapper: NSViewRepresentable {
     @Binding var html: String
     @Binding var webView: WKWebView?
+    @ObservedObject var scrollSync = ScrollSyncManager.shared
 
     func makeNSView(context: Context) -> WKWebView {
         LogManager.shared.log(.info, "Creando WKWebView", context: "WebView")
@@ -91,6 +92,22 @@ struct WebViewWrapper: NSViewRepresentable {
 
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
+
+        // Add scroll event listener script
+        let scrollScript = WKUserScript(
+            source: """
+            window.addEventListener('scroll', function() {
+                const scrollPercentage = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+                window.webkit.messageHandlers.scrollHandler.postMessage({
+                    percentage: Math.max(0, Math.min(1, scrollPercentage || 0))
+                });
+            });
+            """,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        config.userContentController.addUserScript(scrollScript)
+        config.userContentController.add(context.coordinator, name: "scrollHandler")
 
         // Set user agent
         config.applicationNameForUserAgent = "CalmMark"
@@ -118,6 +135,9 @@ struct WebViewWrapper: NSViewRepresentable {
             }
         }
 
+        // Store webView in coordinator
+        context.coordinator.webView = webView
+
         return webView
     }
 
@@ -136,13 +156,54 @@ struct WebViewWrapper: NSViewRepresentable {
         }
 
         webView.loadHTMLString(html, baseURL: nil)
+
+        // Sync scroll from editor
+        if scrollSync.isEnabled && scrollSync.lastScrollSource == .editor {
+            context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
+        }
     }
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
 
-    class Coordinator: NSObject, WKNavigationDelegate {
+    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        weak var webView: WKWebView?
+        private var isSyncing = false
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard !isSyncing,
+                  message.name == "scrollHandler",
+                  let body = message.body as? [String: Any],
+                  let percentage = body["percentage"] as? Double else {
+                return
+            }
+
+            ScrollSyncManager.shared.updateScroll(percentage: percentage, source: .preview)
+        }
+
+        func syncScroll(to percentage: Double) {
+            guard let webView = webView else { return }
+
+            isSyncing = true
+
+            let script = """
+            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+            const targetScroll = \(percentage) * maxScroll;
+            window.scrollTo(0, targetScroll);
+            """
+
+            webView.evaluateJavaScript(script) { _, error in
+                if let error = error {
+                    LogManager.shared.log(.error, "Error sincronizando scroll: \(error.localizedDescription)", context: "WebView")
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    self.isSyncing = false
+                }
+            }
+        }
+
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             LogManager.shared.log(.success, "✅ Preview cargado exitosamente", context: "WebView")
 
@@ -151,6 +212,11 @@ struct WebViewWrapper: NSViewRepresentable {
                 if let length = result as? Int {
                     LogManager.shared.log(.info, "Contenido HTML en body: \(length) caracteres", context: "WebView")
                 }
+            }
+
+            // Restore scroll position after reload
+            if ScrollSyncManager.shared.isEnabled {
+                self.syncScroll(to: ScrollSyncManager.shared.scrollPercentage)
             }
         }
 
