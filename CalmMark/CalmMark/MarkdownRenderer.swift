@@ -150,8 +150,8 @@ class MarkdownRenderer {
                     // Create HTML block - preserve all whitespace including newlines
                     let codeBlock = "<pre><code class=\"language-\(language)\">\(code)</code></pre>"
 
-                    // Create unique placeholder
-                    let placeholder = "___CODEBLOCK_\(placeholderCounter)___"
+                    // Create unique placeholder using HTML comment format to avoid markdown processing
+                    let placeholder = "<!--CODEBLOCK\(placeholderCounter)-->"
                     placeholderCounter += 1
 
                     // Store the actual code block
@@ -200,7 +200,7 @@ class MarkdownRenderer {
             let line = lines[i]
             let trimmed = line.trimmingCharacters(in: .whitespaces)
             let isIndented = line.hasPrefix(" ") || line.hasPrefix("\t")
-            let isPlaceholder = line.contains("___CODEBLOCK_")
+            let isPlaceholder = line.contains("<!--CODEBLOCK")
 
             // Task lists (- [ ] or - [x])
             if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
@@ -305,7 +305,7 @@ class MarkdownRenderer {
 
             // Check if line is already HTML tagged or is a code block placeholder
             let isTagged = trimmed.hasPrefix("<") && trimmed.hasSuffix(">")
-            let isPlaceholder = trimmed.contains("___CODEBLOCK_")
+            let isPlaceholder = trimmed.contains("<!--CODEBLOCK")
 
             if trimmed.isEmpty {
                 if !paragraphLines.isEmpty {
