@@ -97,9 +97,21 @@ struct WebViewWrapper: NSViewRepresentable {
         let scrollScript = WKUserScript(
             source: """
             window.addEventListener('scroll', function() {
-                const scrollPercentage = window.scrollY / (document.documentElement.scrollHeight - window.innerHeight);
+                const docHeight = document.documentElement.scrollHeight;
+                const winHeight = window.innerHeight;
+                const maxScroll = Math.max(0, docHeight - winHeight);
+
+                let percentage;
+                if (maxScroll === 0 || window.scrollY === 0) {
+                    percentage = 0;
+                } else if (window.scrollY >= maxScroll) {
+                    percentage = 1;
+                } else {
+                    percentage = window.scrollY / maxScroll;
+                }
+
                 window.webkit.messageHandlers.scrollHandler.postMessage({
-                    percentage: Math.max(0, Math.min(1, scrollPercentage || 0))
+                    percentage: percentage
                 });
             });
             """,
@@ -194,8 +206,17 @@ struct WebViewWrapper: NSViewRepresentable {
                 return
             }
 
-            LogManager.shared.log(.debug, "Preview scroll manual detectado: \(percentage)", context: "WebView")
-            ScrollSyncManager.shared.updateScroll(percentage: percentage, source: .preview)
+            var clampedPercentage = max(0, min(1, percentage))
+
+            // Snap to extremes for better precision
+            if clampedPercentage < 0.01 {
+                clampedPercentage = 0.0
+            } else if clampedPercentage > 0.99 {
+                clampedPercentage = 1.0
+            }
+
+            LogManager.shared.log(.debug, "Preview scroll manual detectado: \(clampedPercentage)", context: "WebView")
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .preview)
         }
 
         func syncScroll(to percentage: Double) {
@@ -214,9 +235,24 @@ struct WebViewWrapper: NSViewRepresentable {
             let script = """
             (function() {
                 try {
-                    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-                    const targetScroll = \(percentage) * maxScroll;
-                    window.scrollTo(0, targetScroll);
+                    const docHeight = document.documentElement.scrollHeight;
+                    const winHeight = window.innerHeight;
+                    const maxScroll = Math.max(0, docHeight - winHeight);
+
+                    let targetScroll;
+                    if (\(percentage) <= 0.0) {
+                        targetScroll = 0;
+                    } else if (\(percentage) >= 1.0) {
+                        targetScroll = maxScroll;
+                    } else {
+                        targetScroll = Math.round(\(percentage) * maxScroll);
+                    }
+
+                    window.scrollTo({
+                        top: targetScroll,
+                        left: 0,
+                        behavior: 'instant'
+                    });
                     return true;
                 } catch(e) {
                     return false;
