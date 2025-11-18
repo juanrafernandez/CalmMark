@@ -124,80 +124,94 @@ class MarkdownRenderer {
     }
 
     // Post-process HTML to add data-source-line attributes
-    // Uses a more robust approach: sequential scanning with line tracking
+    // Uses a simpler, more robust approach: find ALL instances of each tag
     private static func addSourceLineNumbers(_ html: String, markdown: String) -> String {
         let markdownLines = markdown.components(separatedBy: .newlines)
         var result = html
-        var currentMarkdownLine = 0
         var elementsProcessed = 0
 
         LogManager.shared.log(.debug, "🔢 Añadiendo números de línea: \(markdownLines.count) líneas markdown", context: "Renderer")
 
-        // Helper to extract text content from HTML tag
-        func extractTextContent(_ htmlString: String) -> String {
+        // Helper to extract ALL text from any HTML string (including nested tags)
+        func extractAllText(_ htmlString: String) -> String {
             var text = htmlString
-            // Remove HTML tags
-            text = text.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression)
+            // Remove ALL HTML tags recursively
+            while text.contains("<") {
+                text = text.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
+            }
             // Decode HTML entities
             text = text.replacingOccurrences(of: "&amp;", with: "&")
             text = text.replacingOccurrences(of: "&lt;", with: "<")
             text = text.replacingOccurrences(of: "&gt;", with: ">")
             text = text.replacingOccurrences(of: "&quot;", with: "\"")
             text = text.replacingOccurrences(of: "&#39;", with: "'")
+            // Normalize whitespace
+            text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
             return text.trimmingCharacters(in: .whitespacesAndNewlines)
         }
 
-        // Helper to find next markdown line containing text, starting from a given line
-        func findMarkdownLine(containing text: String, startingFrom: Int) -> Int? {
-            guard !text.isEmpty else { return nil }
+        // Helper to find markdown line containing text
+        func findMarkdownLine(containing searchText: String) -> Int? {
+            guard !searchText.isEmpty, searchText.count >= 3 else { return nil }
 
-            let searchText = text.prefix(50)  // Use first 50 chars for matching
+            // Take first 30 chars for matching
+            let needle = String(searchText.prefix(30)).lowercased()
 
-            for index in startingFrom..<markdownLines.count {
-                let line = markdownLines[index]
+            for (index, line) in markdownLines.enumerated() {
                 let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
                 // Skip empty lines
                 if cleanLine.isEmpty { continue }
 
-                // Remove markdown syntax for comparison
+                // Remove common markdown syntax
                 let strippedLine = cleanLine
                     .replacingOccurrences(of: "^#{1,6}\\s+", with: "", options: .regularExpression)
                     .replacingOccurrences(of: "^>\\s+", with: "", options: .regularExpression)
                     .replacingOccurrences(of: "^[-*+]\\s+(?:\\[[ xX]\\]\\s+)?", with: "", options: .regularExpression)
                     .replacingOccurrences(of: "^\\d+\\.\\s+", with: "", options: .regularExpression)
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                    .lowercased()
 
-                // Check if content matches
-                if strippedLine.hasPrefix(String(searchText)) ||
-                   String(searchText).hasPrefix(strippedLine) ||
-                   strippedLine.contains(String(searchText)) {
-                    return index + 1 // Line numbers are 1-based
+                // Check if text matches (fuzzy)
+                if strippedLine.contains(needle) || needle.contains(strippedLine) {
+                    return index + 1 // 1-based
                 }
             }
             return nil
         }
 
-        // Process headers (h1-h6)
+        // Process ALL opening tags of each type
+        // This is more robust than trying to match full elements with content
+
+        // Headers (h1-h6)
         var headersFound = 0
         for level in 1...6 {
-            let pattern = "<h\(level)>([^<]+)</h\(level)>"
+            // Find ALL opening h tags (simpler regex)
+            let pattern = "<h\(level)(?:\\s[^>]*)?>([\\s\\S]*?)</h\(level)>"
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
                 let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
+                // Process in reverse to not break string indices
                 for match in matches.reversed() {
-                    if match.numberOfRanges >= 2,
-                       let fullRange = Range(match.range(at: 0), in: result),
+                    if let fullRange = Range(match.range(at: 0), in: result),
                        let contentRange = Range(match.range(at: 1), in: result) {
 
                         let fullMatch = String(result[fullRange])
                         let content = String(result[contentRange])
-                        let textContent = extractTextContent(content)
 
-                        if let lineNum = findMarkdownLine(containing: textContent, startingFrom: currentMarkdownLine) {
-                            let replacement = "<h\(level) data-source-line=\"\(lineNum)\" class=\"line\">\(content)</h\(level)>"
+                        // Skip if already has data-source-line
+                        if fullMatch.contains("data-source-line") { continue }
+
+                        let textContent = extractAllText(content)
+
+                        if let lineNum = findMarkdownLine(containing: textContent) {
+                            // Insert attribute right after opening tag
+                            let replacement = fullMatch.replacingOccurrences(
+                                of: "<h\(level)(?:\\s[^>]*)?>",
+                                with: "<h\(level) data-source-line=\"\(lineNum)\" class=\"line\">",
+                                options: .regularExpression,
+                                range: nil
+                            )
                             result.replaceSubrange(fullRange, with: replacement)
-                            currentMarkdownLine = lineNum
                             elementsProcessed += 1
                             headersFound += 1
                         }
@@ -207,27 +221,31 @@ class MarkdownRenderer {
         }
         LogManager.shared.log(.debug, "📋 Headers procesados: \(headersFound)", context: "Renderer")
 
-        // Process paragraphs
+        // Paragraphs
         var paragraphsFound = 0
-        let pPattern = "<p>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</p>"
-        if let regex = try? NSRegularExpression(pattern: pPattern, options: [.dotMatchesLineSeparators]) {
+        let pPattern = "<p(?:\\s[^>]*)?>([\\s\\S]*?)</p>"
+        if let regex = try? NSRegularExpression(pattern: pPattern, options: []) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
             for match in matches.reversed() {
-                if match.numberOfRanges >= 2,
-                   let fullRange = Range(match.range(at: 0), in: result),
+                if let fullRange = Range(match.range(at: 0), in: result),
                    let contentRange = Range(match.range(at: 1), in: result) {
 
                     let fullMatch = String(result[fullRange])
                     let content = String(result[contentRange])
-                    let textContent = extractTextContent(content)
 
-                    // Only process if not already has data-source-line
-                    if !fullMatch.contains("data-source-line"),
-                       let lineNum = findMarkdownLine(containing: textContent, startingFrom: currentMarkdownLine) {
-                        let replacement = "<p data-source-line=\"\(lineNum)\" class=\"line\">\(content)</p>"
+                    if fullMatch.contains("data-source-line") { continue }
+
+                    let textContent = extractAllText(content)
+
+                    if let lineNum = findMarkdownLine(containing: textContent) {
+                        let replacement = fullMatch.replacingOccurrences(
+                            of: "<p(?:\\s[^>]*)?>",
+                            with: "<p data-source-line=\"\(lineNum)\" class=\"line\">",
+                            options: .regularExpression,
+                            range: nil
+                        )
                         result.replaceSubrange(fullRange, with: replacement)
-                        currentMarkdownLine = lineNum
                         elementsProcessed += 1
                         paragraphsFound += 1
                     }
@@ -236,32 +254,31 @@ class MarkdownRenderer {
         }
         LogManager.shared.log(.debug, "📋 Párrafos procesados: \(paragraphsFound)", context: "Renderer")
 
-        // Process list items
+        // List items
         var listItemsFound = 0
-        let liPattern = "<li[^>]*>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</li>"
-        if let regex = try? NSRegularExpression(pattern: liPattern, options: [.dotMatchesLineSeparators]) {
+        let liPattern = "<li(?:\\s[^>]*)?>([\\s\\S]*?)</li>"
+        if let regex = try? NSRegularExpression(pattern: liPattern, options: []) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
             for match in matches.reversed() {
-                if match.numberOfRanges >= 2,
-                   let fullRange = Range(match.range(at: 0), in: result),
+                if let fullRange = Range(match.range(at: 0), in: result),
                    let contentRange = Range(match.range(at: 1), in: result) {
 
                     let fullMatch = String(result[fullRange])
                     let content = String(result[contentRange])
-                    let textContent = extractTextContent(content)
 
-                    // Only process if not already has data-source-line
-                    if !fullMatch.contains("data-source-line"),
-                       let lineNum = findMarkdownLine(containing: textContent, startingFrom: currentMarkdownLine) {
-                        // Preserve existing attributes (like class="task-list-item")
+                    if fullMatch.contains("data-source-line") { continue }
+
+                    let textContent = extractAllText(content)
+
+                    if let lineNum = findMarkdownLine(containing: textContent) {
                         let replacement = fullMatch.replacingOccurrences(
-                            of: "<li([^>]*)>",
-                            with: "<li\\1 data-source-line=\"\(lineNum)\" class=\"line\">",
-                            options: .regularExpression
+                            of: "<li(?:\\s[^>]*)?>",
+                            with: "<li data-source-line=\"\(lineNum)\" class=\"line\">",
+                            options: .regularExpression,
+                            range: nil
                         )
                         result.replaceSubrange(fullRange, with: replacement)
-                        currentMarkdownLine = lineNum
                         elementsProcessed += 1
                         listItemsFound += 1
                     }
@@ -270,27 +287,31 @@ class MarkdownRenderer {
         }
         LogManager.shared.log(.debug, "📋 List items procesados: \(listItemsFound)", context: "Renderer")
 
-        // Process blockquotes
+        // Blockquotes
         var blockquotesFound = 0
-        let blockquotePattern = "<blockquote>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</blockquote>"
-        if let regex = try? NSRegularExpression(pattern: blockquotePattern, options: [.dotMatchesLineSeparators]) {
+        let blockquotePattern = "<blockquote(?:\\s[^>]*)?>([\\s\\S]*?)</blockquote>"
+        if let regex = try? NSRegularExpression(pattern: blockquotePattern, options: []) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
             for match in matches.reversed() {
-                if match.numberOfRanges >= 2,
-                   let fullRange = Range(match.range(at: 0), in: result),
+                if let fullRange = Range(match.range(at: 0), in: result),
                    let contentRange = Range(match.range(at: 1), in: result) {
 
                     let fullMatch = String(result[fullRange])
                     let content = String(result[contentRange])
-                    let textContent = extractTextContent(content)
 
-                    // Only process if not already has data-source-line
-                    if !fullMatch.contains("data-source-line"),
-                       let lineNum = findMarkdownLine(containing: textContent, startingFrom: currentMarkdownLine) {
-                        let replacement = "<blockquote data-source-line=\"\(lineNum)\" class=\"line\">\(content)</blockquote>"
+                    if fullMatch.contains("data-source-line") { continue }
+
+                    let textContent = extractAllText(content)
+
+                    if let lineNum = findMarkdownLine(containing: textContent) {
+                        let replacement = fullMatch.replacingOccurrences(
+                            of: "<blockquote(?:\\s[^>]*)?>",
+                            with: "<blockquote data-source-line=\"\(lineNum)\" class=\"line\">",
+                            options: .regularExpression,
+                            range: nil
+                        )
                         result.replaceSubrange(fullRange, with: replacement)
-                        currentMarkdownLine = lineNum
                         elementsProcessed += 1
                         blockquotesFound += 1
                     }
@@ -299,33 +320,33 @@ class MarkdownRenderer {
         }
         LogManager.shared.log(.debug, "📋 Blockquotes procesados: \(blockquotesFound)", context: "Renderer")
 
-        // Process code blocks
+        // Code blocks
         var codeBlocksFound = 0
-        let prePattern = "<pre>(<code[^>]*>.*?</code>)</pre>"
-        if let regex = try? NSRegularExpression(pattern: prePattern, options: [.dotMatchesLineSeparators]) {
+        let prePattern = "<pre(?:\\s[^>]*)?>([\\s\\S]*?)</pre>"
+        if let regex = try? NSRegularExpression(pattern: prePattern, options: []) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
 
             for match in matches.reversed() {
-                if match.numberOfRanges >= 2,
-                   let fullRange = Range(match.range(at: 0), in: result) {
+                if let fullRange = Range(match.range(at: 0), in: result) {
 
                     let fullMatch = String(result[fullRange])
 
-                    // Only process if not already has data-source-line
-                    if !fullMatch.contains("data-source-line") {
-                        // Find next line with ``` in markdown starting from current position
-                        for index in currentMarkdownLine..<markdownLines.count {
-                            if markdownLines[index].contains("```") {
-                                let lineNum = index + 1
-                                let content = fullMatch.replacingOccurrences(of: "<pre>", with: "")
-                                                       .replacingOccurrences(of: "</pre>", with: "")
-                                let replacement = "<pre data-source-line=\"\(lineNum)\" class=\"line\">\(content)</pre>"
-                                result.replaceSubrange(fullRange, with: replacement)
-                                currentMarkdownLine = lineNum
-                                elementsProcessed += 1
-                                codeBlocksFound += 1
-                                break
-                            }
+                    if fullMatch.contains("data-source-line") { continue }
+
+                    // Find first ``` in markdown
+                    for (index, line) in markdownLines.enumerated() {
+                        if line.contains("```") {
+                            let lineNum = index + 1
+                            let replacement = fullMatch.replacingOccurrences(
+                                of: "<pre(?:\\s[^>]*)?>",
+                                with: "<pre data-source-line=\"\(lineNum)\" class=\"line\">",
+                                options: .regularExpression,
+                                range: nil
+                            )
+                            result.replaceSubrange(fullRange, with: replacement)
+                            elementsProcessed += 1
+                            codeBlocksFound += 1
+                            break
                         }
                     }
                 }
