@@ -20,9 +20,6 @@ class ScrollSyncManager: ObservableObject {
     @Published var scrollPercentage: Double = 0.0
     @Published var lastScrollSource: ScrollSource = .none
     @Published var isEnabled: Bool = true
-    @Published var isUserScrolling: Bool = false
-
-    private var userScrollTimer: Timer?
 
     private init() {}
 
@@ -36,21 +33,6 @@ class ScrollSyncManager: ObservableObject {
 
         scrollPercentage = percentage
         lastScrollSource = source
-
-        // Mark that user is scrolling and reset timer
-        markUserScrolling()
-    }
-
-    private func markUserScrolling() {
-        isUserScrolling = true
-
-        // Cancel existing timer
-        userScrollTimer?.invalidate()
-
-        // Set a timer to reset the flag after user stops scrolling
-        userScrollTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { [weak self] _ in
-            self?.isUserScrolling = false
-        }
     }
 
     func toggleSync() {
