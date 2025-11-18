@@ -93,7 +93,7 @@ struct WebViewWrapper: NSViewRepresentable {
         // Enable JavaScript (still needed for basic functionality)
         config.preferences.javaScriptEnabled = true
 
-        // Add scroll event listener script
+        // Add scroll event listener script - calculates source line from scroll position
         let scrollScript = WKUserScript(
             source: """
             window.addEventListener('scroll', function() {
@@ -110,8 +110,47 @@ struct WebViewWrapper: NSViewRepresentable {
                     percentage = window.scrollY / maxScroll;
                 }
 
+                // Calculate source line from scroll position using interpolation
+                const currentScrollY = window.scrollY;
+                const elements = Array.from(document.querySelectorAll('[data-source-line]'));
+
+                let estimatedLine = 1;
+
+                if (elements.length > 0) {
+                    // Build scroll map
+                    const scrollMap = elements.map(el => ({
+                        line: parseInt(el.getAttribute('data-source-line')),
+                        offsetTop: el.offsetTop,
+                        offsetHeight: el.offsetHeight
+                    })).sort((a, b) => a.line - b.line);
+
+                    // Find elements surrounding current scroll position
+                    let previous = scrollMap[0];
+                    let next = null;
+
+                    for (let i = 0; i < scrollMap.length; i++) {
+                        if (scrollMap[i].offsetTop <= currentScrollY) {
+                            previous = scrollMap[i];
+                        }
+                        if (scrollMap[i].offsetTop > currentScrollY && !next) {
+                            next = scrollMap[i];
+                            break;
+                        }
+                    }
+
+                    // Interpolate to estimate source line
+                    if (next && next.line !== previous.line) {
+                        const pixelProgress = (currentScrollY - previous.offsetTop) / (next.offsetTop - previous.offsetTop);
+                        const lineDiff = next.line - previous.line;
+                        estimatedLine = Math.round(previous.line + (pixelProgress * lineDiff));
+                    } else {
+                        estimatedLine = previous.line;
+                    }
+                }
+
                 window.webkit.messageHandlers.scrollHandler.postMessage({
-                    percentage: percentage
+                    percentage: percentage,
+                    estimatedLine: estimatedLine
                 });
             });
             """,
@@ -217,11 +256,11 @@ struct WebViewWrapper: NSViewRepresentable {
                 clampedPercentage = 1.0
             }
 
-            // Estimate line based on percentage (preview mirrors editor proportionally)
+            // Get estimated line from JavaScript interpolation (more accurate than percentage)
+            let estimatedLine = body["estimatedLine"] as? Int ?? 1
             let currentManager = ScrollSyncManager.shared
-            let estimatedLine = max(1, Int(Double(currentManager.totalLines) * clampedPercentage))
 
-            LogManager.shared.log(.debug, "Preview scroll: estimado línea \(estimatedLine) (\(clampedPercentage))", context: "WebView")
+            LogManager.shared.log(.debug, "📍 Preview scroll: línea estimada \(estimatedLine) (\(String(format: "%.1f", clampedPercentage * 100))%)", context: "WebView")
             // For preview scroll, we don't have the line text, so pass empty string
             ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: estimatedLine, total: currentManager.totalLines, lineText: "", source: .preview)
         }
@@ -238,131 +277,115 @@ struct WebViewWrapper: NSViewRepresentable {
             // Mark as syncing to prevent loop
             isSyncing = true
 
-            // Get the actual line text from the scroll manager
-            let manager = ScrollSyncManager.shared
-            let markdownText = manager.currentLineText
+            // Get the target line number from the scroll manager
+            let targetLine = ScrollSyncManager.shared.currentLine
 
-            if !markdownText.isEmpty {
-                LogManager.shared.log(.debug, "Preview sync: buscando texto '\(markdownText.prefix(50))...'", context: "WebView")
-                scrollToText(markdownText, in: webView)
-            } else {
-                LogManager.shared.log(.debug, "Preview sync: texto de línea vacío", context: "WebView")
-                isSyncing = false
-            }
+            LogManager.shared.log(.debug, "📍 Preview sync: línea \(targetLine)", context: "WebView")
+            scrollToSourceLine(targetLine, in: webView)
         }
 
-        // Function to search for text in preview and scroll to it
-        func scrollToText(_ searchText: String, in webView: WKWebView) {
-            // Clean the search text - remove markdown syntax and normalize
-            var cleanText = searchText
-                .replacingOccurrences(of: "^#{1,6}\\s+", with: "", options: .regularExpression)
-                .replacingOccurrences(of: "^>\\s+", with: "", options: .regularExpression)
-                .replacingOccurrences(of: "^[-*+]\\s+(?:\\[[ xX]\\]\\s+)?", with: "", options: .regularExpression)
-                .replacingOccurrences(of: "^\\d+\\.\\s+", with: "", options: .regularExpression)
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-
-            // If text is too short, don't try to search
-            if cleanText.count < 3 {
-                LogManager.shared.log(.debug, "Texto demasiado corto para buscar: '\(cleanText)'", context: "WebView")
-                isSyncing = false
-                return
-            }
-
-            // Take first 100 characters to search for
-            cleanText = String(cleanText.prefix(100))
-
-            // Escape the text for JavaScript - be more careful with special chars
-            let escapedText = cleanText
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-                .replacingOccurrences(of: "\"", with: "\\\"")
-                .replacingOccurrences(of: "\n", with: " ")
-                .replacingOccurrences(of: "\r", with: "")
-
-            LogManager.shared.log(.debug, "🔍 Texto original: '\(searchText.prefix(50))'", context: "WebView")
-            LogManager.shared.log(.debug, "🔍 Texto limpio: '\(cleanText.prefix(50))'", context: "WebView")
-            LogManager.shared.log(.debug, "🔍 Texto escapado: '\(escapedText.prefix(50))'", context: "WebView")
-
+        // Scroll to a specific source line using interpolation (VSCode-style)
+        func scrollToSourceLine(_ targetLine: Int, in webView: WKWebView) {
             let script = """
             (function() {
                 try {
-                    const searchText = '\(escapedText)';
-                    console.log('🔍 Searching for:', searchText);
+                    const targetLine = \(targetLine);
+                    console.log('📍 Scrolling to source line:', targetLine);
 
-                    // Function to normalize text for comparison
-                    function normalizeText(text) {
-                        return text.replace(/\\s+/g, ' ').trim().toLowerCase();
+                    // Build scroll map from elements with data-source-line
+                    const elements = Array.from(document.querySelectorAll('[data-source-line]'));
+                    console.log('📍 Found elements with data-source-line:', elements.length);
+
+                    if (elements.length === 0) {
+                        console.log('⚠️ No elements with data-source-line found');
+                        return { success: false, reason: 'no_elements' };
                     }
 
-                    const normalizedSearch = normalizeText(searchText);
-                    console.log('🔍 Normalized search:', normalizedSearch);
+                    // Build map of line -> {element, offsetTop}
+                    const scrollMap = elements.map(el => ({
+                        line: parseInt(el.getAttribute('data-source-line')),
+                        element: el,
+                        offsetTop: el.offsetTop
+                    })).sort((a, b) => a.line - b.line);
 
-                    // Search in all block elements
-                    const elements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, pre, blockquote');
-                    console.log('🔍 Total elements to search:', elements.length);
+                    console.log('📍 Scroll map built, lines:', scrollMap.map(m => m.line).join(', '));
 
-                    let bestMatch = null;
-                    let bestScore = 0;
+                    // Find elements surrounding target line
+                    let previous = scrollMap[0];
+                    let next = null;
 
-                    for (const el of elements) {
-                        const text = el.textContent;
-                        const normalizedText = normalizeText(text);
-
-                        // Check for exact substring match
-                        if (normalizedText.includes(normalizedSearch)) {
-                            bestMatch = el;
-                            bestScore = 100;
-                            console.log('Exact match found:', text.substring(0, 50));
+                    for (let i = 0; i < scrollMap.length; i++) {
+                        if (scrollMap[i].line <= targetLine) {
+                            previous = scrollMap[i];
+                        }
+                        if (scrollMap[i].line >= targetLine && !next) {
+                            next = scrollMap[i];
                             break;
                         }
-
-                        // Check for partial match (first 20 chars)
-                        const searchStart = normalizedSearch.substring(0, 20);
-                        const textStart = normalizedText.substring(0, 20);
-
-                        if (searchStart && textStart.includes(searchStart)) {
-                            const score = 80;
-                            if (score > bestScore) {
-                                bestMatch = el;
-                                bestScore = score;
-                                console.log('Partial match found:', text.substring(0, 50), 'score:', score);
-                            }
-                        }
                     }
 
-                    if (bestMatch) {
-                        // Get position before scroll
-                        const beforeScroll = window.scrollY;
-                        // Scroll immediately to the element
-                        bestMatch.scrollIntoView({ behavior: 'instant', block: 'start' });
-                        const afterScroll = window.scrollY;
-                        console.log('✅ Scrolled to element, score:', bestScore, 'from:', beforeScroll, 'to:', afterScroll);
-                        return { success: true, score: bestScore, scrollBefore: beforeScroll, scrollAfter: afterScroll };
+                    console.log('📍 Target line:', targetLine);
+                    console.log('📍 Previous:', previous.line, 'at', previous.offsetTop);
+                    console.log('📍 Next:', next ? next.line + ' at ' + next.offsetTop : 'none');
+
+                    let scrollTo = previous.offsetTop;
+
+                    // If we have both previous and next, interpolate between them
+                    if (next && next.line !== previous.line) {
+                        const lineDiff = next.line - previous.line;
+                        const lineProgress = (targetLine - previous.line) / lineDiff;
+                        const pixelDiff = next.offsetTop - previous.offsetTop;
+                        scrollTo = previous.offsetTop + (pixelDiff * lineProgress);
+                        console.log('📍 Interpolating: progress=' + lineProgress + ', pixelDiff=' + pixelDiff);
+                    }
+                    // If target line is after previous element, interpolate within the element
+                    else if (targetLine > previous.line) {
+                        const elementHeight = previous.element.offsetHeight || 0;
+                        const lineProgress = Math.min(1, (targetLine - previous.line) / 10); // Assume ~10 lines per element
+                        scrollTo = previous.offsetTop + (elementHeight * lineProgress);
+                        console.log('📍 Interpolating within element: progress=' + lineProgress + ', height=' + elementHeight);
                     }
 
-                    console.log('❌ No match found for:', searchText);
-                    return { success: false };
+                    const beforeScroll = window.scrollY;
+                    window.scrollTo({ top: scrollTo, behavior: 'instant' });
+                    const afterScroll = window.scrollY;
+
+                    console.log('✅ Scrolled from', beforeScroll, 'to', afterScroll);
+                    return {
+                        success: true,
+                        targetLine: targetLine,
+                        scrollBefore: beforeScroll,
+                        scrollAfter: afterScroll,
+                        previousLine: previous.line,
+                        nextLine: next ? next.line : null
+                    };
                 } catch(e) {
-                    console.error('Error searching:', e);
-                    return false;
+                    console.error('❌ Error in scrollToSourceLine:', e);
+                    return { success: false, error: e.toString() };
                 }
             })();
             """
 
-            webView.evaluateJavaScript(script) { result, error in
+            webView.evaluateJavaScript(script) { [weak self] result, error in
+                guard let self = self else { return }
+
                 if let error = error {
-                    LogManager.shared.log(.error, "❌ Error en búsqueda: \(error.localizedDescription)", context: "WebView")
+                    LogManager.shared.log(.error, "❌ Error en scroll por línea: \(error.localizedDescription)", context: "WebView")
                 } else if let resultDict = result as? [String: Any] {
                     if let success = resultDict["success"] as? Bool, success {
-                        let score = resultDict["score"] as? Int ?? 0
+                        let targetLine = resultDict["targetLine"] as? Int ?? 0
                         let before = resultDict["scrollBefore"] as? Double ?? 0
                         let after = resultDict["scrollAfter"] as? Double ?? 0
-                        LogManager.shared.log(.success, "✅ Texto encontrado (score: \(score)), scroll: \(Int(before))→\(Int(after))", context: "WebView")
+                        let prevLine = resultDict["previousLine"] as? Int ?? 0
+                        let nextLine = resultDict["nextLine"] as? Int
+                        let nextInfo = nextLine != nil ? " next=\(nextLine!)" : " (last)"
+                        LogManager.shared.log(.success, "✅ Scroll a línea \(targetLine): prev=\(prevLine)\(nextInfo), scroll: \(Int(before))→\(Int(after))px", context: "WebView")
                     } else {
-                        LogManager.shared.log(.warning, "⚠️ Texto no encontrado en preview", context: "WebView")
+                        let reason = resultDict["reason"] as? String ?? "unknown"
+                        LogManager.shared.log(.warning, "⚠️ No se pudo hacer scroll: \(reason)", context: "WebView")
                     }
                 } else {
-                    LogManager.shared.log(.warning, "⚠️ Resultado inesperado: \(String(describing: result))", context: "WebView")
+                    LogManager.shared.log(.warning, "⚠️ Resultado inesperado del scroll: \(String(describing: result))", context: "WebView")
                 }
 
                 // Reset syncing flag after a delay
