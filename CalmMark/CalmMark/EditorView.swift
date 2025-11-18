@@ -119,11 +119,11 @@ struct MarkdownTextEditor: NSViewRepresentable {
             if selectedRange.location <= textView.string.count {
                 textView.setSelectedRange(selectedRange)
             }
-        }
 
-        // Apply syntax highlighting
-        if settings.syntaxHighlighting {
-            applySyntaxHighlighting(to: textView)
+            // Apply syntax highlighting only when text actually changed
+            if settings.syntaxHighlighting {
+                applySyntaxHighlighting(to: textView)
+            }
         }
 
         // Sync scroll from preview - only if it changed and we're not already syncing
