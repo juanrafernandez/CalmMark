@@ -388,12 +388,12 @@ struct WebViewWrapper: NSViewRepresentable {
                     LogManager.shared.log(.warning, "⚠️ Resultado inesperado del scroll: \(String(describing: result))", context: "WebView")
                 }
 
-                // Reset syncing flag after a delay
+                // Reset syncing flag after a short delay (just enough to ignore echo from our scrollTo)
                 let workItem = DispatchWorkItem { [weak self] in
                     self?.isSyncing = false
                 }
                 self.syncTimer = workItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
             }
         }
 
