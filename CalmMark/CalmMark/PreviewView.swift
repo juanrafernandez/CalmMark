@@ -179,8 +179,9 @@ struct WebViewWrapper: NSViewRepresentable {
            scrollSync.lastScrollSource == .editor &&
            !context.coordinator.isSyncing &&
            context.coordinator.isContentLoaded &&
-           abs(scrollSync.scrollPercentage - context.coordinator.lastSyncedPercentage) > 0.001 {
+           scrollSync.currentLine != context.coordinator.lastSyncedLine {
             context.coordinator.lastSyncedPercentage = scrollSync.scrollPercentage
+            context.coordinator.lastSyncedLine = scrollSync.currentLine
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -193,6 +194,7 @@ struct WebViewWrapper: NSViewRepresentable {
         weak var webView: WKWebView?
         var isSyncing = false
         var lastSyncedPercentage: Double = 0.0
+        var lastSyncedLine: Int = 0
         var lastLoadedHTML: String = ""
         var isContentLoaded = false
         private var syncTimer: DispatchWorkItem?
@@ -251,46 +253,95 @@ struct WebViewWrapper: NSViewRepresentable {
 
         // Function to search for text in preview and scroll to it
         func scrollToText(_ searchText: String, in webView: WKWebView) {
-            // Clean the search text - remove markdown syntax
-            let cleanText = searchText
+            // Clean the search text - remove markdown syntax and normalize
+            var cleanText = searchText
                 .replacingOccurrences(of: "^#{1,6}\\s+", with: "", options: .regularExpression)
                 .replacingOccurrences(of: "^>\\s+", with: "", options: .regularExpression)
-                .replacingOccurrences(of: "^[-*+]\\s+", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "^[-*+]\\s+(?:\\[[ xX]\\]\\s+)?", with: "", options: .regularExpression)
                 .replacingOccurrences(of: "^\\d+\\.\\s+", with: "", options: .regularExpression)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
 
-            // Escape the text for JavaScript
+            // If text is too short, don't try to search
+            if cleanText.count < 3 {
+                LogManager.shared.log(.debug, "Texto demasiado corto para buscar: '\(cleanText)'", context: "WebView")
+                isSyncing = false
+                return
+            }
+
+            // Take first 100 characters to search for
+            cleanText = String(cleanText.prefix(100))
+
+            // Escape the text for JavaScript - be more careful with special chars
             let escapedText = cleanText
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "'", with: "\\'")
-                .replacingOccurrences(of: "\n", with: "\\n")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: " ")
+                .replacingOccurrences(of: "\r", with: "")
+
+            LogManager.shared.log(.debug, "🔍 Texto original: '\(searchText.prefix(50))'", context: "WebView")
+            LogManager.shared.log(.debug, "🔍 Texto limpio: '\(cleanText.prefix(50))'", context: "WebView")
+            LogManager.shared.log(.debug, "🔍 Texto escapado: '\(escapedText.prefix(50))'", context: "WebView")
 
             let script = """
             (function() {
                 try {
                     const searchText = '\(escapedText)';
+                    console.log('🔍 Searching for:', searchText);
 
-                    // Function to get text content of an element
-                    function getTextContent(element) {
-                        return element.textContent.trim();
+                    // Function to normalize text for comparison
+                    function normalizeText(text) {
+                        return text.replace(/\\s+/g, ' ').trim().toLowerCase();
                     }
+
+                    const normalizedSearch = normalizeText(searchText);
+                    console.log('🔍 Normalized search:', normalizedSearch);
 
                     // Search in all block elements
                     const elements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, pre, blockquote');
+                    console.log('🔍 Total elements to search:', elements.length);
+
+                    let bestMatch = null;
+                    let bestScore = 0;
 
                     for (const el of elements) {
-                        const text = getTextContent(el);
-                        // Check if this element contains the search text
-                        if (text.includes(searchText) || searchText.includes(text.substring(0, 30))) {
-                            // Found it! Scroll to this element
-                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            console.log('Scrolled to:', text.substring(0, 50));
-                            return true;
+                        const text = el.textContent;
+                        const normalizedText = normalizeText(text);
+
+                        // Check for exact substring match
+                        if (normalizedText.includes(normalizedSearch)) {
+                            bestMatch = el;
+                            bestScore = 100;
+                            console.log('Exact match found:', text.substring(0, 50));
+                            break;
+                        }
+
+                        // Check for partial match (first 20 chars)
+                        const searchStart = normalizedSearch.substring(0, 20);
+                        const textStart = normalizedText.substring(0, 20);
+
+                        if (searchStart && textStart.includes(searchStart)) {
+                            const score = 80;
+                            if (score > bestScore) {
+                                bestMatch = el;
+                                bestScore = score;
+                                console.log('Partial match found:', text.substring(0, 50), 'score:', score);
+                            }
                         }
                     }
 
-                    console.log('Text not found:', searchText);
-                    return false;
+                    if (bestMatch) {
+                        // Get position before scroll
+                        const beforeScroll = window.scrollY;
+                        // Scroll immediately to the element
+                        bestMatch.scrollIntoView({ behavior: 'instant', block: 'start' });
+                        const afterScroll = window.scrollY;
+                        console.log('✅ Scrolled to element, score:', bestScore, 'from:', beforeScroll, 'to:', afterScroll);
+                        return { success: true, score: bestScore, scrollBefore: beforeScroll, scrollAfter: afterScroll };
+                    }
+
+                    console.log('❌ No match found for:', searchText);
+                    return { success: false };
                 } catch(e) {
                     console.error('Error searching:', e);
                     return false;
@@ -300,22 +351,26 @@ struct WebViewWrapper: NSViewRepresentable {
 
             webView.evaluateJavaScript(script) { result, error in
                 if let error = error {
-                    LogManager.shared.log(.error, "Error en búsqueda de texto: \(error.localizedDescription)", context: "WebView")
-                } else if let success = result as? Bool {
-                    if success {
-                        LogManager.shared.log(.debug, "Texto encontrado y scroll aplicado", context: "WebView")
+                    LogManager.shared.log(.error, "❌ Error en búsqueda: \(error.localizedDescription)", context: "WebView")
+                } else if let resultDict = result as? [String: Any] {
+                    if let success = resultDict["success"] as? Bool, success {
+                        let score = resultDict["score"] as? Int ?? 0
+                        let before = resultDict["scrollBefore"] as? Double ?? 0
+                        let after = resultDict["scrollAfter"] as? Double ?? 0
+                        LogManager.shared.log(.success, "✅ Texto encontrado (score: \(score)), scroll: \(Int(before))→\(Int(after))", context: "WebView")
                     } else {
-                        LogManager.shared.log(.debug, "Texto no encontrado en preview", context: "WebView")
+                        LogManager.shared.log(.warning, "⚠️ Texto no encontrado en preview", context: "WebView")
                     }
+                } else {
+                    LogManager.shared.log(.warning, "⚠️ Resultado inesperado: \(String(describing: result))", context: "WebView")
                 }
 
                 // Reset syncing flag after a delay
                 let workItem = DispatchWorkItem { [weak self] in
                     self?.isSyncing = false
-                    LogManager.shared.log(.debug, "Preview sync finalizado", context: "WebView")
                 }
                 self.syncTimer = workItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
             }
         }
 

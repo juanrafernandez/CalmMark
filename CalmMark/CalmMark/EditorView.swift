@@ -130,8 +130,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
         if scrollSync.isEnabled &&
            scrollSync.lastScrollSource == .preview &&
            !context.coordinator.isSyncing &&
-           abs(scrollSync.scrollPercentage - context.coordinator.lastSyncedPercentage) > 0.001 {
+           scrollSync.currentLine != context.coordinator.lastSyncedLine {
             context.coordinator.lastSyncedPercentage = scrollSync.scrollPercentage
+            context.coordinator.lastSyncedLine = scrollSync.currentLine
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -145,6 +146,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         weak var scrollView: NSScrollView?
         var isSyncing = false
         var lastSyncedPercentage: Double = 0.0
+        var lastSyncedLine: Int = 0
         private var syncTimer: DispatchWorkItem?
 
         init(_ parent: MarkdownTextEditor) {
