@@ -2,583 +2,23 @@
 //  MarkdownRenderer.swift
 //  CalmMark
 //
-//  Created by Claude on 2025-11-15.
+//  Refactored to use swift-markdown for precise line number mapping
 //
 
 import Foundation
+import Markdown
 
 class MarkdownRenderer {
 
-    // Storage for code blocks during processing
-    private static var codeBlockPlaceholders: [String: String] = [:]
-    private static var placeholderCounter = 0
-
-    // Render Markdown to HTML
-    // This uses a basic implementation - can be enhanced with swift-markdown later
+    // Render Markdown to HTML using swift-markdown
     static func renderToHTML(_ markdown: String, settings: AppSettings = AppSettings.shared) -> String {
-        var html = markdown
+        // Parse markdown using swift-markdown
+        let document = Document(parsing: markdown)
 
-        // Reset placeholders
-        codeBlockPlaceholders = [:]
-        placeholderCounter = 0
+        // Generate HTML from the AST with line numbers
+        let htmlBody = HTMLRenderer.render(document, sourceText: markdown)
 
-        // Code blocks FIRST (to protect code from other transformations)
-        html = renderCodeBlocks(html)
-
-        // Headers (# to ######) - Use (?m) for multiline mode
-        for level in (1...6).reversed() {
-            let hashes = String(repeating: "#", count: level)
-            let pattern = "(?m)^\(hashes)\\s+(.+)$"
-            html = html.replacingOccurrences(
-                of: pattern,
-                with: "<h\(level)>$1</h\(level)>",
-                options: .regularExpression,
-                range: nil
-            )
-        }
-
-        // Horizontal rules BEFORE other inline elements
-        html = html.replacingOccurrences(
-            of: "(?m)^(-{3,}|\\*{3,}|_{3,})$",
-            with: "<hr />",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Images BEFORE links (because ![...](url) contains [...](url))
-        html = html.replacingOccurrences(
-            of: "!\\[([^\\]]*)\\]\\(([^\\)]+)\\)",
-            with: "<img src=\"$2\" alt=\"$1\" loading=\"lazy\" />",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Links
-        html = html.replacingOccurrences(
-            of: "\\[([^\\]]+)\\]\\(([^\\)]+)\\)",
-            with: "<a href=\"$2\" target=\"_blank\" rel=\"noopener noreferrer\">$1</a>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Bold (**text** or __text__)
-        html = html.replacingOccurrences(
-            of: "\\*\\*([^*]+)\\*\\*",
-            with: "<strong>$1</strong>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "__([^_]+)__",
-            with: "<strong>$1</strong>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Strikethrough (~~text~~)
-        html = html.replacingOccurrences(
-            of: "~~([^~]+)~~",
-            with: "<del>$1</del>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Italic (*text* or _text_) - AFTER bold to avoid conflicts
-        html = html.replacingOccurrences(
-            of: "(?<!\\*)\\*([^*]+)\\*(?!\\*)",
-            with: "<em>$1</em>",
-            options: .regularExpression,
-            range: nil
-        )
-        html = html.replacingOccurrences(
-            of: "(?<!_)_([^_]+)_(?!_)",
-            with: "<em>$1</em>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Inline code (`code`)
-        html = html.replacingOccurrences(
-            of: "`([^`]+)`",
-            with: "<code>$1</code>",
-            options: .regularExpression,
-            range: nil
-        )
-
-        // Lists
-        html = renderLists(html)
-
-        // Blockquotes
-        html = renderBlockquotes(html)
-
-        // Paragraphs (wrap non-tagged lines)
-        html = renderParagraphs(html)
-
-        // Restore code blocks from placeholders
-        html = restoreCodeBlocks(html)
-
-        // Add line numbers to HTML elements
-        html = addSourceLineNumbers(html, markdown: markdown)
-
-        return wrapInHTML(html, settings: settings)
-    }
-
-    // Post-process HTML to add data-source-line attributes
-    // Uses a simpler, more robust approach: find ALL instances of each tag
-    private static func addSourceLineNumbers(_ html: String, markdown: String) -> String {
-        let markdownLines = markdown.components(separatedBy: .newlines)
-        var result = html
-        var elementsProcessed = 0
-
-        LogManager.shared.log(.debug, "🔢 Añadiendo números de línea: \(markdownLines.count) líneas markdown", context: "Renderer")
-
-        // Helper to extract ALL text from any HTML string (including nested tags)
-        func extractAllText(_ htmlString: String) -> String {
-            var text = htmlString
-            // Remove ALL HTML tags recursively
-            while text.contains("<") {
-                text = text.replacingOccurrences(of: "<[^>]+>", with: " ", options: .regularExpression)
-            }
-            // Decode HTML entities
-            text = text.replacingOccurrences(of: "&amp;", with: "&")
-            text = text.replacingOccurrences(of: "&lt;", with: "<")
-            text = text.replacingOccurrences(of: "&gt;", with: ">")
-            text = text.replacingOccurrences(of: "&quot;", with: "\"")
-            text = text.replacingOccurrences(of: "&#39;", with: "'")
-            // Normalize whitespace
-            text = text.replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
-        // Helper to find markdown line containing text
-        func findMarkdownLine(containing searchText: String) -> Int? {
-            guard !searchText.isEmpty, searchText.count >= 3 else { return nil }
-
-            // Take first 30 chars for matching
-            let needle = String(searchText.prefix(30)).lowercased()
-
-            for (index, line) in markdownLines.enumerated() {
-                let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
-
-                // Skip empty lines
-                if cleanLine.isEmpty { continue }
-
-                // Remove common markdown syntax
-                let strippedLine = cleanLine
-                    .replacingOccurrences(of: "^#{1,6}\\s+", with: "", options: .regularExpression)
-                    .replacingOccurrences(of: "^>\\s+", with: "", options: .regularExpression)
-                    .replacingOccurrences(of: "^[-*+]\\s+(?:\\[[ xX]\\]\\s+)?", with: "", options: .regularExpression)
-                    .replacingOccurrences(of: "^\\d+\\.\\s+", with: "", options: .regularExpression)
-                    .lowercased()
-
-                // Check if text matches (fuzzy)
-                if strippedLine.contains(needle) || needle.contains(strippedLine) {
-                    return index + 1 // 1-based
-                }
-            }
-            return nil
-        }
-
-        // Process ALL opening tags of each type
-        // This is more robust than trying to match full elements with content
-
-        // Headers (h1-h6)
-        var headersFound = 0
-        for level in 1...6 {
-            // Find ALL opening h tags (simpler regex)
-            let pattern = "<h\(level)(?:\\s[^>]*)?>([\\s\\S]*?)</h\(level)>"
-            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
-                let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-                // Process in reverse to not break string indices
-                for match in matches.reversed() {
-                    if let fullRange = Range(match.range(at: 0), in: result),
-                       let contentRange = Range(match.range(at: 1), in: result) {
-
-                        let fullMatch = String(result[fullRange])
-                        let content = String(result[contentRange])
-
-                        // Skip if already has data-source-line
-                        if fullMatch.contains("data-source-line") { continue }
-
-                        let textContent = extractAllText(content)
-
-                        if let lineNum = findMarkdownLine(containing: textContent) {
-                            // Insert attribute right after opening tag
-                            let replacement = fullMatch.replacingOccurrences(
-                                of: "<h\(level)(?:\\s[^>]*)?>",
-                                with: "<h\(level) data-source-line=\"\(lineNum)\" class=\"line\">",
-                                options: .regularExpression,
-                                range: nil
-                            )
-                            result.replaceSubrange(fullRange, with: replacement)
-                            elementsProcessed += 1
-                            headersFound += 1
-                        }
-                    }
-                }
-            }
-        }
-        LogManager.shared.log(.debug, "📋 Headers procesados: \(headersFound)", context: "Renderer")
-
-        // Paragraphs
-        var paragraphsFound = 0
-        let pPattern = "<p(?:\\s[^>]*)?>([\\s\\S]*?)</p>"
-        if let regex = try? NSRegularExpression(pattern: pPattern, options: []) {
-            let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-            for match in matches.reversed() {
-                if let fullRange = Range(match.range(at: 0), in: result),
-                   let contentRange = Range(match.range(at: 1), in: result) {
-
-                    let fullMatch = String(result[fullRange])
-                    let content = String(result[contentRange])
-
-                    if fullMatch.contains("data-source-line") { continue }
-
-                    let textContent = extractAllText(content)
-
-                    if let lineNum = findMarkdownLine(containing: textContent) {
-                        let replacement = fullMatch.replacingOccurrences(
-                            of: "<p(?:\\s[^>]*)?>",
-                            with: "<p data-source-line=\"\(lineNum)\" class=\"line\">",
-                            options: .regularExpression,
-                            range: nil
-                        )
-                        result.replaceSubrange(fullRange, with: replacement)
-                        elementsProcessed += 1
-                        paragraphsFound += 1
-                    }
-                }
-            }
-        }
-        LogManager.shared.log(.debug, "📋 Párrafos procesados: \(paragraphsFound)", context: "Renderer")
-
-        // List items
-        var listItemsFound = 0
-        let liPattern = "<li(?:\\s[^>]*)?>([\\s\\S]*?)</li>"
-        if let regex = try? NSRegularExpression(pattern: liPattern, options: []) {
-            let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-            for match in matches.reversed() {
-                if let fullRange = Range(match.range(at: 0), in: result),
-                   let contentRange = Range(match.range(at: 1), in: result) {
-
-                    let fullMatch = String(result[fullRange])
-                    let content = String(result[contentRange])
-
-                    if fullMatch.contains("data-source-line") { continue }
-
-                    let textContent = extractAllText(content)
-
-                    if let lineNum = findMarkdownLine(containing: textContent) {
-                        let replacement = fullMatch.replacingOccurrences(
-                            of: "<li(?:\\s[^>]*)?>",
-                            with: "<li data-source-line=\"\(lineNum)\" class=\"line\">",
-                            options: .regularExpression,
-                            range: nil
-                        )
-                        result.replaceSubrange(fullRange, with: replacement)
-                        elementsProcessed += 1
-                        listItemsFound += 1
-                    }
-                }
-            }
-        }
-        LogManager.shared.log(.debug, "📋 List items procesados: \(listItemsFound)", context: "Renderer")
-
-        // Blockquotes
-        var blockquotesFound = 0
-        let blockquotePattern = "<blockquote(?:\\s[^>]*)?>([\\s\\S]*?)</blockquote>"
-        if let regex = try? NSRegularExpression(pattern: blockquotePattern, options: []) {
-            let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-            for match in matches.reversed() {
-                if let fullRange = Range(match.range(at: 0), in: result),
-                   let contentRange = Range(match.range(at: 1), in: result) {
-
-                    let fullMatch = String(result[fullRange])
-                    let content = String(result[contentRange])
-
-                    if fullMatch.contains("data-source-line") { continue }
-
-                    let textContent = extractAllText(content)
-
-                    if let lineNum = findMarkdownLine(containing: textContent) {
-                        let replacement = fullMatch.replacingOccurrences(
-                            of: "<blockquote(?:\\s[^>]*)?>",
-                            with: "<blockquote data-source-line=\"\(lineNum)\" class=\"line\">",
-                            options: .regularExpression,
-                            range: nil
-                        )
-                        result.replaceSubrange(fullRange, with: replacement)
-                        elementsProcessed += 1
-                        blockquotesFound += 1
-                    }
-                }
-            }
-        }
-        LogManager.shared.log(.debug, "📋 Blockquotes procesados: \(blockquotesFound)", context: "Renderer")
-
-        // Code blocks
-        var codeBlocksFound = 0
-        let prePattern = "<pre(?:\\s[^>]*)?>([\\s\\S]*?)</pre>"
-        if let regex = try? NSRegularExpression(pattern: prePattern, options: []) {
-            let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-            for match in matches.reversed() {
-                if let fullRange = Range(match.range(at: 0), in: result) {
-
-                    let fullMatch = String(result[fullRange])
-
-                    if fullMatch.contains("data-source-line") { continue }
-
-                    // Find first ``` in markdown
-                    for (index, line) in markdownLines.enumerated() {
-                        if line.contains("```") {
-                            let lineNum = index + 1
-                            let replacement = fullMatch.replacingOccurrences(
-                                of: "<pre(?:\\s[^>]*)?>",
-                                with: "<pre data-source-line=\"\(lineNum)\" class=\"line\">",
-                                options: .regularExpression,
-                                range: nil
-                            )
-                            result.replaceSubrange(fullRange, with: replacement)
-                            elementsProcessed += 1
-                            codeBlocksFound += 1
-                            break
-                        }
-                    }
-                }
-            }
-        }
-        LogManager.shared.log(.debug, "📋 Code blocks procesados: \(codeBlocksFound)", context: "Renderer")
-
-        LogManager.shared.log(.success, "✅ Total elementos con data-source-line: \(elementsProcessed)", context: "Renderer")
-
-        return result
-    }
-
-    private static func restoreCodeBlocks(_ text: String) -> String {
-        var result = text
-        for (placeholder, codeBlock) in codeBlockPlaceholders {
-            result = result.replacingOccurrences(of: placeholder, with: codeBlock)
-        }
-        return result
-    }
-
-    private static func renderCodeBlocks(_ text: String) -> String {
-        var result = text
-        // Updated pattern to match GFM spec:
-        // - Optional indentation (0-3 spaces)
-        // - 3+ backticks
-        // - Optional info string (language)
-        // - Content
-        // - Closing fence with same or more backticks
-        let pattern = "^[ ]{0,3}```([a-zA-Z0-9]*)[ ]*\\n([\\s\\S]*?)^[ ]{0,3}```[ ]*$"
-
-        if let regex = try? NSRegularExpression(pattern: pattern, options: [.anchorsMatchLines]) {
-            let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
-
-            for match in matches.reversed() {
-                if match.numberOfRanges == 3,
-                   let languageRange = Range(match.range(at: 1), in: result),
-                   let codeRange = Range(match.range(at: 2), in: result),
-                   let fullRange = Range(match.range(at: 0), in: result) {
-
-                    let language = String(result[languageRange])
-                    var code = String(result[codeRange])
-
-                    // Remove trailing newline if present (the one before closing ```)
-                    if code.hasSuffix("\n") {
-                        code = String(code.dropLast())
-                    }
-
-                    // Preserve newlines by escaping HTML
-                    code = code.htmlEscaped
-
-                    // Create HTML block - preserve all whitespace including newlines
-                    let codeBlock = "<pre><code class=\"language-\(language)\">\(code)</code></pre>"
-
-                    // Create unique placeholder using HTML comment format to avoid markdown processing
-                    let placeholder = "<!--CODEBLOCK\(placeholderCounter)-->"
-                    placeholderCounter += 1
-
-                    // Store the actual code block
-                    codeBlockPlaceholders[placeholder] = codeBlock
-
-                    // Replace with placeholder
-                    result.replaceSubrange(fullRange, with: placeholder)
-                }
-            }
-        }
-
-        return result
-    }
-
-    private static func renderLists(_ text: String) -> String {
-        var result = text
-        let lines = result.components(separatedBy: .newlines)
-        var output: [String] = []
-        var inList = false
-        var listType = ""
-        var inListItem = false
-        var listItemContent: [String] = []
-
-        func closeListItem() {
-            if inListItem {
-                output.append(listItemContent.joined(separator: "\n") + "</li>")
-                listItemContent = []
-                inListItem = false
-            }
-        }
-
-        func closeList() {
-            closeListItem()
-            if inList {
-                if listType == "task" || listType == "ul" {
-                    output.append("</ul>")
-                } else {
-                    output.append("</ol>")
-                }
-                inList = false
-                listType = ""
-            }
-        }
-
-        for i in 0..<lines.count {
-            let line = lines[i]
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let isIndented = line.hasPrefix(" ") || line.hasPrefix("\t")
-            let isPlaceholder = line.contains("<!--CODEBLOCK")
-
-            // Task lists (- [ ] or - [x])
-            if line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
-                if !inList || listType != "task" {
-                    closeList()
-                    output.append("<ul class=\"task-list\">")
-                    inList = true
-                    listType = "task"
-                } else {
-                    closeListItem()
-                }
-                let checked = line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ")
-                let item = line.dropFirst(6) // Skip "- [x] "
-                let checkbox = checked ? "<input type=\"checkbox\" checked disabled />" : "<input type=\"checkbox\" disabled />"
-                listItemContent = ["<li class=\"task-list-item\">\(checkbox) \(item)"]
-                inListItem = true
-            }
-            // Regular unordered lists
-            else if line.hasPrefix("- ") || line.hasPrefix("* ") {
-                if !inList || listType != "ul" {
-                    closeList()
-                    output.append("<ul>")
-                    inList = true
-                    listType = "ul"
-                } else {
-                    closeListItem()
-                }
-                let item = line.dropFirst(2)
-                listItemContent = ["<li>\(item)"]
-                inListItem = true
-            }
-            // Ordered lists (match any number followed by .)
-            else if line.range(of: "^\\d+\\.\\s", options: .regularExpression) != nil {
-                if !inList || listType != "ol" {
-                    closeList()
-                    output.append("<ol>")
-                    inList = true
-                    listType = "ol"
-                } else {
-                    closeListItem()
-                }
-                if let dotIndex = line.firstIndex(of: ".") {
-                    let item = line[line.index(after: dotIndex)...].trimmingCharacters(in: .whitespaces)
-                    listItemContent = ["<li>\(item)"]
-                    inListItem = true
-                }
-            }
-            // If we're in a list item and this is indented content, placeholder, or HTML, add to item
-            else if inListItem && (isIndented || isPlaceholder || trimmed.hasPrefix("<") || trimmed.isEmpty) {
-                listItemContent.append(line)
-            }
-            // Non-list content
-            else {
-                closeList()
-                output.append(line)
-            }
-        }
-
-        // Close any remaining open items/lists
-        closeList()
-
-        return output.joined(separator: "\n")
-    }
-
-    private static func renderBlockquotes(_ text: String) -> String {
-        var result = text
-        let lines = result.components(separatedBy: .newlines)
-        var output: [String] = []
-        var inBlockquote = false
-        var blockquoteContent: [String] = []
-
-        for line in lines {
-            if line.hasPrefix("> ") {
-                if !inBlockquote {
-                    inBlockquote = true
-                }
-                blockquoteContent.append(String(line.dropFirst(2)))
-            } else {
-                if inBlockquote {
-                    output.append("<blockquote>\n\(blockquoteContent.joined(separator: "\n"))\n</blockquote>")
-                    blockquoteContent = []
-                    inBlockquote = false
-                }
-                output.append(line)
-            }
-        }
-
-        if inBlockquote {
-            output.append("<blockquote>\n\(blockquoteContent.joined(separator: "\n"))\n</blockquote>")
-        }
-
-        return output.joined(separator: "\n")
-    }
-
-    private static func renderParagraphs(_ text: String) -> String {
-        let lines = text.components(separatedBy: .newlines)
-        var output: [String] = []
-        var paragraphLines: [String] = []
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-
-            // Check if line is already HTML tagged or is a code block placeholder
-            let isTagged = trimmed.hasPrefix("<") && trimmed.hasSuffix(">")
-            let isPlaceholder = trimmed.contains("<!--CODEBLOCK")
-
-            if trimmed.isEmpty {
-                if !paragraphLines.isEmpty {
-                    output.append("<p>\(paragraphLines.joined(separator: " "))</p>")
-                    paragraphLines = []
-                }
-                output.append("")
-            } else if isTagged || isPlaceholder {
-                if !paragraphLines.isEmpty {
-                    output.append("<p>\(paragraphLines.joined(separator: " "))</p>")
-                    paragraphLines = []
-                }
-                output.append(line)
-            } else {
-                paragraphLines.append(trimmed)
-            }
-        }
-
-        if !paragraphLines.isEmpty {
-            output.append("<p>\(paragraphLines.joined(separator: " "))</p>")
-        }
-
-        return output.joined(separator: "\n")
+        return wrapInHTML(htmlBody, settings: settings)
     }
 
     private static func wrapInHTML(_ body: String, settings: AppSettings) -> String {
@@ -604,6 +44,243 @@ class MarkdownRenderer {
         """
     }
 }
+
+// MARK: - HTML Renderer
+
+private struct HTMLRenderer {
+
+    static func render(_ document: Document, sourceText: String) -> String {
+        var html = ""
+        var elementsProcessed = 0
+
+        LogManager.shared.log(.debug, "🔢 Renderizando con swift-markdown", context: "Renderer")
+
+        for child in document.children {
+            html += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+        }
+
+        LogManager.shared.log(.success, "✅ Total elementos con data-source-line: \(elementsProcessed)", context: "Renderer")
+
+        return html
+    }
+
+    private static func renderNode(_ node: Markup, sourceText: String, elementsProcessed: inout Int) -> String {
+        // Get line number from node's source range
+        let lineNumber = getLineNumber(for: node, sourceText: sourceText)
+
+        switch node {
+        case let heading as Heading:
+            return renderHeading(heading, lineNumber: lineNumber, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let paragraph as Paragraph:
+            return renderParagraph(paragraph, lineNumber: lineNumber, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let list as UnorderedList:
+            return renderUnorderedList(list, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let list as OrderedList:
+            return renderOrderedList(list, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let listItem as ListItem:
+            return renderListItem(listItem, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let blockQuote as BlockQuote:
+            return renderBlockQuote(blockQuote, lineNumber: lineNumber, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+
+        case let codeBlock as CodeBlock:
+            return renderCodeBlock(codeBlock, lineNumber: lineNumber, elementsProcessed: &elementsProcessed)
+
+        case let thematicBreak as ThematicBreak:
+            return "<hr />\n"
+
+        default:
+            // For unknown block elements, process children
+            var html = ""
+            for child in node.children {
+                html += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+            }
+            return html
+        }
+    }
+
+    // MARK: - Block Elements
+
+    private static func renderHeading(_ heading: Heading, lineNumber: Int?, sourceText: String, elementsProcessed: inout Int) -> String {
+        let level = heading.level
+        let content = renderInlineContent(heading.children, sourceText: sourceText)
+
+        if let lineNumber = lineNumber {
+            elementsProcessed += 1
+            return "<h\(level) data-source-line=\"\(lineNumber)\" class=\"line\">\(content)</h\(level)>\n"
+        } else {
+            return "<h\(level)>\(content)</h\(level)>\n"
+        }
+    }
+
+    private static func renderParagraph(_ paragraph: Paragraph, lineNumber: Int?, sourceText: String, elementsProcessed: inout Int) -> String {
+        let content = renderInlineContent(paragraph.children, sourceText: sourceText)
+
+        if let lineNumber = lineNumber {
+            elementsProcessed += 1
+            return "<p data-source-line=\"\(lineNumber)\" class=\"line\">\(content)</p>\n"
+        } else {
+            return "<p>\(content)</p>\n"
+        }
+    }
+
+    private static func renderUnorderedList(_ list: UnorderedList, sourceText: String, elementsProcessed: inout Int) -> String {
+        var html = "<ul>\n"
+
+        for child in list.children {
+            html += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+        }
+
+        html += "</ul>\n"
+        return html
+    }
+
+    private static func renderOrderedList(_ list: OrderedList, sourceText: String, elementsProcessed: inout Int) -> String {
+        var html = "<ol>\n"
+
+        for child in list.children {
+            html += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+        }
+
+        html += "</ol>\n"
+        return html
+    }
+
+    private static func renderListItem(_ item: ListItem, sourceText: String, elementsProcessed: inout Int) -> String {
+        let lineNumber = getLineNumber(for: item, sourceText: sourceText)
+        var content = ""
+
+        for child in item.children {
+            content += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+        }
+
+        // Remove wrapping <p> tags from list items (markdown convention)
+        let cleanContent = content
+            .replacingOccurrences(of: "<p>", with: "")
+            .replacingOccurrences(of: "</p>", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let lineNumber = lineNumber {
+            elementsProcessed += 1
+            return "<li data-source-line=\"\(lineNumber)\" class=\"line\">\(cleanContent)</li>\n"
+        } else {
+            return "<li>\(cleanContent)</li>\n"
+        }
+    }
+
+    private static func renderBlockQuote(_ blockQuote: BlockQuote, lineNumber: Int?, sourceText: String, elementsProcessed: inout Int) -> String {
+        var content = ""
+
+        for child in blockQuote.children {
+            content += renderNode(child, sourceText: sourceText, elementsProcessed: &elementsProcessed)
+        }
+
+        if let lineNumber = lineNumber {
+            elementsProcessed += 1
+            return "<blockquote data-source-line=\"\(lineNumber)\" class=\"line\">\n\(content)</blockquote>\n"
+        } else {
+            return "<blockquote>\n\(content)</blockquote>\n"
+        }
+    }
+
+    private static func renderCodeBlock(_ codeBlock: CodeBlock, lineNumber: Int?, elementsProcessed: inout Int) -> String {
+        let language = codeBlock.language ?? ""
+        let code = codeBlock.code.htmlEscaped
+
+        if let lineNumber = lineNumber {
+            elementsProcessed += 1
+            return "<pre data-source-line=\"\(lineNumber)\" class=\"line\"><code class=\"language-\(language)\">\(code)</code></pre>\n"
+        } else {
+            return "<pre><code class=\"language-\(language)\">\(code)</code></pre>\n"
+        }
+    }
+
+    // MARK: - Inline Elements
+
+    private static func renderInlineContent(_ children: some Sequence<Markup>, sourceText: String) -> String {
+        var html = ""
+
+        for child in children {
+            html += renderInlineNode(child, sourceText: sourceText)
+        }
+
+        return html
+    }
+
+    private static func renderInlineNode(_ node: Markup, sourceText: String) -> String {
+        switch node {
+        case let text as Text:
+            return text.string.htmlEscaped
+
+        case let strong as Strong:
+            let content = renderInlineContent(strong.children, sourceText: sourceText)
+            return "<strong>\(content)</strong>"
+
+        case let emphasis as Emphasis:
+            let content = renderInlineContent(emphasis.children, sourceText: sourceText)
+            return "<em>\(content)</em>"
+
+        case let code as InlineCode:
+            return "<code>\(code.code.htmlEscaped)</code>"
+
+        case let link as Link:
+            let content = renderInlineContent(link.children, sourceText: sourceText)
+            let destination = link.destination ?? ""
+            return "<a href=\"\(destination)\" target=\"_blank\" rel=\"noopener noreferrer\">\(content)</a>"
+
+        case let image as Image:
+            let alt = image.plainText
+            let source = image.source ?? ""
+            return "<img src=\"\(source)\" alt=\"\(alt)\" loading=\"lazy\" />"
+
+        case let strikethrough as Strikethrough:
+            let content = renderInlineContent(strikethrough.children, sourceText: sourceText)
+            return "<del>\(content)</del>"
+
+        case let softBreak as SoftBreak:
+            return " "
+
+        case let lineBreak as LineBreak:
+            return "<br />"
+
+        default:
+            // For unknown inline elements, render children
+            var html = ""
+            for child in node.children {
+                html += renderInlineNode(child, sourceText: sourceText)
+            }
+            return html
+        }
+    }
+
+    // MARK: - Line Number Extraction
+
+    private static func getLineNumber(for node: Markup, sourceText: String) -> Int? {
+        guard let range = node.range else { return nil }
+
+        // Calculate line number from the source location
+        let lines = sourceText.split(separator: "\n", omittingEmptySubsequences: false)
+        var currentOffset = 0
+
+        for (index, line) in lines.enumerated() {
+            let lineLength = line.count + 1 // +1 for newline
+
+            if currentOffset + lineLength > range.lowerBound.column {
+                return index + 1 // 1-based line numbers
+            }
+
+            currentOffset += lineLength
+        }
+
+        return nil
+    }
+}
+
+// MARK: - String Extension
 
 extension String {
     var htmlEscaped: String {
