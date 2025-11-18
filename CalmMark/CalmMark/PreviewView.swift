@@ -79,7 +79,6 @@ struct WebViewWrapper: NSViewRepresentable {
     @Binding var html: String
     @Binding var webView: WKWebView?
     @ObservedObject var scrollSync = ScrollSyncManager.shared
-    @State private var lastSyncedPercentage: Double = 0.0
 
     func makeNSView(context: Context) -> WKWebView {
         LogManager.shared.log(.info, "Creando WKWebView", context: "WebView")
@@ -143,27 +142,31 @@ struct WebViewWrapper: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
-        // Only reload if content actually changed and webView is not loading
+        // Only reload HTML if it actually changed
         guard !html.isEmpty else {
             LogManager.shared.log(.debug, "updateNSView: HTML vacío, saltando actualización", context: "WebView")
             return
         }
 
-        LogManager.shared.log(.debug, "updateNSView: Actualizando WebView con HTML (\(html.count) caracteres)", context: "WebView")
+        // Check if HTML content changed
+        if context.coordinator.lastLoadedHTML != html {
+            LogManager.shared.log(.debug, "updateNSView: HTML cambió, recargando WebView (\(html.count) caracteres)", context: "WebView")
 
-        if webView.isLoading {
-            LogManager.shared.log(.debug, "WebView está cargando, deteniendo carga anterior", context: "WebView")
-            webView.stopLoading()
+            if webView.isLoading {
+                LogManager.shared.log(.debug, "WebView está cargando, deteniendo carga anterior", context: "WebView")
+                webView.stopLoading()
+            }
+
+            context.coordinator.lastLoadedHTML = html
+            webView.loadHTMLString(html, baseURL: nil)
         }
 
-        webView.loadHTMLString(html, baseURL: nil)
-
-        // Sync scroll from editor - only if it changed and we're not already syncing
+        // Sync scroll from editor - independent of HTML reload
         if scrollSync.isEnabled &&
            scrollSync.lastScrollSource == .editor &&
            !context.coordinator.isSyncing &&
-           abs(scrollSync.scrollPercentage - lastSyncedPercentage) > 0.001 {
-            lastSyncedPercentage = scrollSync.scrollPercentage
+           abs(scrollSync.scrollPercentage - context.coordinator.lastSyncedPercentage) > 0.001 {
+            context.coordinator.lastSyncedPercentage = scrollSync.scrollPercentage
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -175,6 +178,8 @@ struct WebViewWrapper: NSViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: WKWebView?
         var isSyncing = false
+        var lastSyncedPercentage: Double = 0.0
+        var lastLoadedHTML: String = ""
         private var syncTimer: DispatchWorkItem?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
