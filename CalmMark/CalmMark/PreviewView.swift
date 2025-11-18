@@ -79,6 +79,7 @@ struct WebViewWrapper: NSViewRepresentable {
     @Binding var html: String
     @Binding var webView: WKWebView?
     @ObservedObject var scrollSync = ScrollSyncManager.shared
+    @State private var lastSyncedPercentage: Double = 0.0
 
     func makeNSView(context: Context) -> WKWebView {
         LogManager.shared.log(.info, "Creando WKWebView", context: "WebView")
@@ -157,8 +158,12 @@ struct WebViewWrapper: NSViewRepresentable {
 
         webView.loadHTMLString(html, baseURL: nil)
 
-        // Sync scroll from editor
-        if scrollSync.isEnabled && scrollSync.lastScrollSource == .editor {
+        // Sync scroll from editor - only if it changed and we're not already syncing
+        if scrollSync.isEnabled &&
+           scrollSync.lastScrollSource == .editor &&
+           !context.coordinator.isSyncing &&
+           abs(scrollSync.scrollPercentage - lastSyncedPercentage) > 0.001 {
+            lastSyncedPercentage = scrollSync.scrollPercentage
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -169,9 +174,11 @@ struct WebViewWrapper: NSViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         weak var webView: WKWebView?
-        private var isSyncing = false
+        var isSyncing = false
+        private var syncTimer: DispatchWorkItem?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            // Don't report scroll events during programmatic scrolling
             guard !isSyncing,
                   message.name == "scrollHandler",
                   let body = message.body as? [String: Any],
@@ -179,13 +186,19 @@ struct WebViewWrapper: NSViewRepresentable {
                 return
             }
 
+            LogManager.shared.log(.debug, "Preview scroll manual detectado: \(percentage)", context: "WebView")
             ScrollSyncManager.shared.updateScroll(percentage: percentage, source: .preview)
         }
 
         func syncScroll(to percentage: Double) {
             guard let webView = webView else { return }
 
+            // Cancel any pending timer
+            syncTimer?.cancel()
+
+            // Mark as syncing to prevent loop
             isSyncing = true
+            LogManager.shared.log(.debug, "Preview sync scroll programático a: \(percentage)", context: "WebView")
 
             let script = """
             const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
@@ -197,11 +210,15 @@ struct WebViewWrapper: NSViewRepresentable {
                 if let error = error {
                     LogManager.shared.log(.error, "Error sincronizando scroll: \(error.localizedDescription)", context: "WebView")
                 }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    self.isSyncing = false
-                }
             }
+
+            // Keep isSyncing = true for longer to avoid detecting our own scroll
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.isSyncing = false
+                LogManager.shared.log(.debug, "Preview sync finalizado", context: "WebView")
+            }
+            syncTimer = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
