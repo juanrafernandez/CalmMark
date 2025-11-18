@@ -235,34 +235,51 @@ struct WebViewWrapper: NSViewRepresentable {
             // Mark as syncing to prevent loop
             isSyncing = true
 
-            // Get line-based scroll position from manager
+            // Get line number from manager
             let manager = ScrollSyncManager.shared
-            let linePercentage = manager.totalLines > 1 ? Double(manager.currentLine - 1) / Double(manager.totalLines - 1) : 0.0
+            let targetLine = manager.currentLine
 
-            LogManager.shared.log(.debug, "Preview sync: línea \(manager.currentLine)/\(manager.totalLines) = \(linePercentage)", context: "WebView")
+            LogManager.shared.log(.debug, "Preview sync: buscando línea \(targetLine) del markdown", context: "WebView")
 
             let script = """
             (function() {
                 try {
-                    const docHeight = document.documentElement.scrollHeight;
-                    const winHeight = window.innerHeight;
-                    const maxScroll = Math.max(0, docHeight - winHeight);
+                    // Find element with data-source-line closest to or equal to target
+                    const targetLine = \(targetLine);
+                    const allElements = document.querySelectorAll('[data-source-line]');
 
-                    let targetScroll;
-                    if (\(linePercentage) <= 0.0) {
-                        targetScroll = 0;
-                    } else if (\(linePercentage) >= 1.0) {
-                        targetScroll = maxScroll;
-                    } else {
-                        targetScroll = Math.round(\(linePercentage) * maxScroll);
+                    if (allElements.length === 0) {
+                        // Fallback to percentage if no line markers
+                        const linePercentage = \(manager.totalLines) > 1 ? (\(targetLine) - 1) / (\(manager.totalLines) - 1) : 0;
+                        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                        window.scrollTo({ top: Math.round(linePercentage * maxScroll), left: 0, behavior: 'instant' });
+                        return true;
                     }
 
-                    window.scrollTo({
-                        top: targetScroll,
-                        left: 0,
-                        behavior: 'instant'
-                    });
-                    return true;
+                    // Find closest element to target line
+                    let closestElement = null;
+                    let closestDiff = Infinity;
+
+                    for (const el of allElements) {
+                        const sourceLine = parseInt(el.getAttribute('data-source-line'));
+                        const diff = Math.abs(sourceLine - targetLine);
+                        if (diff < closestDiff) {
+                            closestDiff = diff;
+                            closestElement = el;
+                        }
+                        // Stop if we found exact match
+                        if (sourceLine === targetLine) {
+                            break;
+                        }
+                    }
+
+                    if (closestElement) {
+                        // Scroll so element is at the top of the viewport
+                        closestElement.scrollIntoView({ behavior: 'instant', block: 'start' });
+                        return true;
+                    }
+
+                    return false;
                 } catch(e) {
                     return false;
                 }

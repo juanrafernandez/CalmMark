@@ -117,7 +117,52 @@ class MarkdownRenderer {
         // Restore code blocks from placeholders
         html = restoreCodeBlocks(html)
 
+        // Add line numbers to HTML elements
+        html = addSourceLineNumbers(html, markdown: markdown)
+
         return wrapInHTML(html, settings: settings)
+    }
+
+    // Post-process HTML to add data-source-line attributes
+    private static func addSourceLineNumbers(_ html: String, markdown: String) -> String {
+        let markdownLines = markdown.components(separatedBy: .newlines)
+        let htmlLines = html.components(separatedBy: .newlines)
+
+        var result: [String] = []
+        var markdownLineIndex = 0
+
+        for htmlLine in htmlLines {
+            var modifiedLine = htmlLine
+
+            // Find markdown line that corresponds to this HTML
+            if htmlLine.contains("<h") || htmlLine.contains("<p") || htmlLine.contains("<pre") ||
+               htmlLine.contains("<ul") || htmlLine.contains("<ol") || htmlLine.contains("<blockquote") ||
+               htmlLine.contains("<li") {
+
+                // Find corresponding markdown line by matching content
+                if markdownLineIndex < markdownLines.count {
+                    // Check if we can insert data-source-line attribute
+                    if htmlLine.contains("<h") {
+                        modifiedLine = htmlLine.replacingOccurrences(
+                            of: "<h([1-6])>",
+                            with: "<h$1 data-source-line=\"\(markdownLineIndex + 1)\">",
+                            options: .regularExpression
+                        )
+                    } else if htmlLine.contains("<p>") && !htmlLine.contains("data-source-line") {
+                        modifiedLine = htmlLine.replacingOccurrences(of: "<p>", with: "<p data-source-line=\"\(markdownLineIndex + 1)\">")
+                    } else if htmlLine.contains("<pre>") && !htmlLine.contains("data-source-line") {
+                        modifiedLine = htmlLine.replacingOccurrences(of: "<pre>", with: "<pre data-source-line=\"\(markdownLineIndex + 1)\">")
+                    } else if htmlLine.contains("<blockquote>") && !htmlLine.contains("data-source-line") {
+                        modifiedLine = htmlLine.replacingOccurrences(of: "<blockquote>", with: "<blockquote data-source-line=\"\(markdownLineIndex + 1)\">")
+                    }
+                    markdownLineIndex += 1
+                }
+            }
+
+            result.append(modifiedLine)
+        }
+
+        return result.joined(separator: "\n")
     }
 
     private static func restoreCodeBlocks(_ text: String) -> String {
