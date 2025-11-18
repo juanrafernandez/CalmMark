@@ -129,6 +129,9 @@ class MarkdownRenderer {
         let markdownLines = markdown.components(separatedBy: .newlines)
         var result = html
         var currentMarkdownLine = 0
+        var elementsProcessed = 0
+
+        LogManager.shared.log(.debug, "🔢 Añadiendo números de línea: \(markdownLines.count) líneas markdown", context: "Renderer")
 
         // Helper to extract text content from HTML tag
         func extractTextContent(_ htmlString: String) -> String {
@@ -176,6 +179,7 @@ class MarkdownRenderer {
         }
 
         // Process headers (h1-h6)
+        var headersFound = 0
         for level in 1...6 {
             let pattern = "<h\(level)>([^<]+)</h\(level)>"
             if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
@@ -194,13 +198,17 @@ class MarkdownRenderer {
                             let replacement = "<h\(level) data-source-line=\"\(lineNum)\" class=\"line\">\(content)</h\(level)>"
                             result.replaceSubrange(fullRange, with: replacement)
                             currentMarkdownLine = lineNum
+                            elementsProcessed += 1
+                            headersFound += 1
                         }
                     }
                 }
             }
         }
+        LogManager.shared.log(.debug, "📋 Headers procesados: \(headersFound)", context: "Renderer")
 
         // Process paragraphs
+        var paragraphsFound = 0
         let pPattern = "<p>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</p>"
         if let regex = try? NSRegularExpression(pattern: pPattern, options: [.dotMatchesLineSeparators]) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
@@ -220,12 +228,16 @@ class MarkdownRenderer {
                         let replacement = "<p data-source-line=\"\(lineNum)\" class=\"line\">\(content)</p>"
                         result.replaceSubrange(fullRange, with: replacement)
                         currentMarkdownLine = lineNum
+                        elementsProcessed += 1
+                        paragraphsFound += 1
                     }
                 }
             }
         }
+        LogManager.shared.log(.debug, "📋 Párrafos procesados: \(paragraphsFound)", context: "Renderer")
 
         // Process list items
+        var listItemsFound = 0
         let liPattern = "<li[^>]*>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</li>"
         if let regex = try? NSRegularExpression(pattern: liPattern, options: [.dotMatchesLineSeparators]) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
@@ -250,12 +262,16 @@ class MarkdownRenderer {
                         )
                         result.replaceSubrange(fullRange, with: replacement)
                         currentMarkdownLine = lineNum
+                        elementsProcessed += 1
+                        listItemsFound += 1
                     }
                 }
             }
         }
+        LogManager.shared.log(.debug, "📋 List items procesados: \(listItemsFound)", context: "Renderer")
 
         // Process blockquotes
+        var blockquotesFound = 0
         let blockquotePattern = "<blockquote>([^<]+(?:<[^/][^>]*>[^<]*</[^>]+>)*[^<]*)</blockquote>"
         if let regex = try? NSRegularExpression(pattern: blockquotePattern, options: [.dotMatchesLineSeparators]) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
@@ -275,12 +291,16 @@ class MarkdownRenderer {
                         let replacement = "<blockquote data-source-line=\"\(lineNum)\" class=\"line\">\(content)</blockquote>"
                         result.replaceSubrange(fullRange, with: replacement)
                         currentMarkdownLine = lineNum
+                        elementsProcessed += 1
+                        blockquotesFound += 1
                     }
                 }
             }
         }
+        LogManager.shared.log(.debug, "📋 Blockquotes procesados: \(blockquotesFound)", context: "Renderer")
 
         // Process code blocks
+        var codeBlocksFound = 0
         let prePattern = "<pre>(<code[^>]*>.*?</code>)</pre>"
         if let regex = try? NSRegularExpression(pattern: prePattern, options: [.dotMatchesLineSeparators]) {
             let matches = regex.matches(in: result, options: [], range: NSRange(result.startIndex..., in: result))
@@ -302,6 +322,8 @@ class MarkdownRenderer {
                                 let replacement = "<pre data-source-line=\"\(lineNum)\" class=\"line\">\(content)</pre>"
                                 result.replaceSubrange(fullRange, with: replacement)
                                 currentMarkdownLine = lineNum
+                                elementsProcessed += 1
+                                codeBlocksFound += 1
                                 break
                             }
                         }
@@ -309,6 +331,9 @@ class MarkdownRenderer {
                 }
             }
         }
+        LogManager.shared.log(.debug, "📋 Code blocks procesados: \(codeBlocksFound)", context: "Renderer")
+
+        LogManager.shared.log(.success, "✅ Total elementos con data-source-line: \(elementsProcessed)", context: "Renderer")
 
         return result
     }
