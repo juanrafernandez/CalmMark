@@ -158,13 +158,15 @@ struct WebViewWrapper: NSViewRepresentable {
             }
 
             context.coordinator.lastLoadedHTML = html
+            context.coordinator.isContentLoaded = false  // Reset until didFinish
             webView.loadHTMLString(html, baseURL: nil)
         }
 
-        // Sync scroll from editor - independent of HTML reload
+        // Sync scroll from editor - only if content is fully loaded
         if scrollSync.isEnabled &&
            scrollSync.lastScrollSource == .editor &&
            !context.coordinator.isSyncing &&
+           context.coordinator.isContentLoaded &&
            abs(scrollSync.scrollPercentage - context.coordinator.lastSyncedPercentage) > 0.001 {
             context.coordinator.lastSyncedPercentage = scrollSync.scrollPercentage
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
@@ -180,6 +182,7 @@ struct WebViewWrapper: NSViewRepresentable {
         var isSyncing = false
         var lastSyncedPercentage: Double = 0.0
         var lastLoadedHTML: String = ""
+        var isContentLoaded = false
         private var syncTimer: DispatchWorkItem?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -196,7 +199,10 @@ struct WebViewWrapper: NSViewRepresentable {
         }
 
         func syncScroll(to percentage: Double) {
-            guard let webView = webView else { return }
+            guard let webView = webView, isContentLoaded else {
+                LogManager.shared.log(.debug, "Preview sync ignorado - contenido no cargado", context: "WebView")
+                return
+            }
 
             // Cancel any pending timer
             syncTimer?.cancel()
@@ -206,14 +212,23 @@ struct WebViewWrapper: NSViewRepresentable {
             LogManager.shared.log(.debug, "Preview sync scroll programático a: \(percentage)", context: "WebView")
 
             let script = """
-            const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-            const targetScroll = \(percentage) * maxScroll;
-            window.scrollTo(0, targetScroll);
+            (function() {
+                try {
+                    const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+                    const targetScroll = \(percentage) * maxScroll;
+                    window.scrollTo(0, targetScroll);
+                    return true;
+                } catch(e) {
+                    return false;
+                }
+            })();
             """
 
-            webView.evaluateJavaScript(script) { _, error in
+            webView.evaluateJavaScript(script) { result, error in
                 if let error = error {
                     LogManager.shared.log(.error, "Error sincronizando scroll: \(error.localizedDescription)", context: "WebView")
+                } else if let success = result as? Bool, !success {
+                    LogManager.shared.log(.error, "JavaScript scroll falló internamente", context: "WebView")
                 }
             }
 
@@ -228,6 +243,9 @@ struct WebViewWrapper: NSViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             LogManager.shared.log(.success, "✅ Preview cargado exitosamente", context: "WebView")
+
+            // Mark content as loaded - now safe to execute JavaScript
+            isContentLoaded = true
 
             // Verificar que realmente hay contenido
             webView.evaluateJavaScript("document.body.innerHTML.length") { result, error in
