@@ -201,7 +201,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
         func syncScroll(to percentage: Double) {
             guard let scrollView = scrollView,
-                  let documentView = scrollView.documentView else {
+                  let documentView = scrollView.documentView,
+                  let textView = documentView as? NSTextView else {
+                LogManager.shared.log(.debug, "Editor sync ignorado - views no disponibles", context: "Editor")
                 return
             }
 
@@ -211,26 +213,71 @@ struct MarkdownTextEditor: NSViewRepresentable {
             // Mark as syncing to prevent loop
             isSyncing = true
 
-            // Get line-based scroll position from manager
+            // Get target line from manager
             let manager = ScrollSyncManager.shared
-            let linePercentage = manager.totalLines > 1 ? Double(manager.currentLine - 1) / Double(manager.totalLines - 1) : 0.0
+            let targetLine = manager.currentLine
+            let totalLines = manager.totalLines
 
-            LogManager.shared.log(.debug, "Editor sync: línea \(manager.currentLine)/\(manager.totalLines) = \(linePercentage)", context: "Editor")
+            LogManager.shared.log(.debug, "📍 Editor sync: scrolling to línea \(targetLine)/\(totalLines)", context: "Editor")
 
-            let documentHeight = documentView.bounds.height
+            // Get the text and split into lines
+            let text = textView.string
+            let lines = text.components(separatedBy: .newlines)
+
+            guard targetLine > 0 && targetLine <= lines.count else {
+                LogManager.shared.log(.warning, "⚠️ Línea \(targetLine) fuera de rango (total: \(lines.count))", context: "Editor")
+                isSyncing = false
+                return
+            }
+
+            // Calculate character index at the start of target line
+            var charIndex = 0
+            for i in 0..<(targetLine - 1) {
+                if i < lines.count {
+                    charIndex += lines[i].count + 1 // +1 for newline
+                }
+            }
+
+            // Ensure charIndex is within bounds
+            charIndex = min(charIndex, text.count)
+
+            // Use layout manager to get the actual pixel position of this character
+            guard let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else {
+                LogManager.shared.log(.warning, "⚠️ Layout manager no disponible", context: "Editor")
+                isSyncing = false
+                return
+            }
+
+            // Get the glyph index for our character
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: charIndex)
+
+            // Get the line fragment rect for this glyph
+            let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+
+            // Calculate the Y position in the document
+            let targetY = lineFragmentRect.origin.y
+
+            // Get scroll view dimensions
             let scrollViewHeight = scrollView.contentView.bounds.height
+            let documentHeight = documentView.bounds.height
 
             guard documentHeight > scrollViewHeight else {
                 isSyncing = false
                 return
             }
 
-            let targetY = linePercentage * (documentHeight - scrollViewHeight)
+            // Clamp to valid scroll range
             let clampedY = max(0, min(documentHeight - scrollViewHeight, targetY))
 
+            LogManager.shared.log(.debug, "📍 Editor: charIndex=\(charIndex), glyphIndex=\(glyphIndex), targetY=\(Int(targetY))px, clampedY=\(Int(clampedY))px", context: "Editor")
+
+            // Scroll to the position
             var newOrigin = scrollView.contentView.bounds.origin
             newOrigin.y = clampedY
             scrollView.contentView.setBoundsOrigin(newOrigin)
+
+            LogManager.shared.log(.success, "✅ Editor scrolled to línea \(targetLine) at \(Int(clampedY))px", context: "Editor")
 
             // Keep isSyncing = true for longer to avoid detecting our own scroll
             let workItem = DispatchWorkItem { [weak self] in
