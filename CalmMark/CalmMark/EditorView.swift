@@ -49,6 +49,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var settings: AppSettings
     @Binding var textViewRef: NSTextView?
     @ObservedObject var scrollSync = ScrollSyncManager.shared
+    @State private var lastSyncedPercentage: Double = 0.0
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -126,8 +127,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
             applySyntaxHighlighting(to: textView)
         }
 
-        // Sync scroll from preview
-        if scrollSync.isEnabled && scrollSync.lastScrollSource == .preview {
+        // Sync scroll from preview - only if it changed and we're not already syncing
+        if scrollSync.isEnabled &&
+           scrollSync.lastScrollSource == .preview &&
+           !context.coordinator.isSyncing &&
+           abs(scrollSync.scrollPercentage - lastSyncedPercentage) > 0.001 {
+            lastSyncedPercentage = scrollSync.scrollPercentage
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -139,13 +144,15 @@ struct MarkdownTextEditor: NSViewRepresentable {
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: MarkdownTextEditor
         weak var scrollView: NSScrollView?
-        private var isSyncing = false
+        var isSyncing = false
+        private var syncTimer: DispatchWorkItem?
 
         init(_ parent: MarkdownTextEditor) {
             self.parent = parent
         }
 
         @objc func scrollViewDidScroll(_ notification: Notification) {
+            // Don't report scroll events during programmatic scrolling
             guard !isSyncing,
                   let scrollView = notification.object as? NSScrollView,
                   let documentView = scrollView.documentView else {
@@ -161,6 +168,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
             let scrollPercentage = visibleRect.origin.y / (documentHeight - scrollViewHeight)
             let clampedPercentage = max(0, min(1, scrollPercentage))
 
+            LogManager.shared.log(.debug, "Editor scroll manual detectado: \(clampedPercentage)", context: "Editor")
             ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .editor)
         }
 
@@ -170,7 +178,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 return
             }
 
+            // Cancel any pending timer
+            syncTimer?.cancel()
+
+            // Mark as syncing to prevent loop
             isSyncing = true
+            LogManager.shared.log(.debug, "Editor sync scroll programático a: \(percentage)", context: "Editor")
 
             let documentHeight = documentView.bounds.height
             let scrollViewHeight = scrollView.contentView.bounds.height
@@ -187,9 +200,13 @@ struct MarkdownTextEditor: NSViewRepresentable {
             newOrigin.y = clampedY
             scrollView.contentView.setBoundsOrigin(newOrigin)
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                self.isSyncing = false
+            // Keep isSyncing = true for longer to avoid detecting our own scroll
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.isSyncing = false
+                LogManager.shared.log(.debug, "Editor sync finalizado", context: "Editor")
             }
+            syncTimer = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
         }
 
         func textDidChange(_ notification: Notification) {
