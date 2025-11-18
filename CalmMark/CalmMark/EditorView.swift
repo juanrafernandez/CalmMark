@@ -178,7 +178,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
             // Calculate visible line number
             let text = textView.string
-            let totalLines = max(1, text.components(separatedBy: .newlines).count)
+            let lines = text.components(separatedBy: .newlines)
+            let totalLines = max(1, lines.count)
 
             // Find the character index at the top of the visible area
             let topPoint = NSPoint(x: visibleRect.minX, y: visibleRect.minY)
@@ -188,8 +189,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
             let textUpToPoint = String(text.prefix(charIndex))
             let currentLine = max(1, textUpToPoint.components(separatedBy: .newlines).count)
 
-            LogManager.shared.log(.debug, "Editor scroll: línea \(currentLine)/\(totalLines) (\(clampedPercentage))", context: "Editor")
-            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: currentLine, total: totalLines, source: .editor)
+            // Get the text of the current line
+            let lineIndex = currentLine - 1 // Convert to 0-based index
+            let currentLineText = (lineIndex >= 0 && lineIndex < lines.count) ? lines[lineIndex] : ""
+
+            LogManager.shared.log(.debug, "Editor scroll: línea \(currentLine)/\(totalLines), texto: '\(currentLineText.prefix(50))'", context: "Editor")
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: currentLine, total: totalLines, lineText: currentLineText, source: .editor)
         }
 
         func syncScroll(to percentage: Double) {

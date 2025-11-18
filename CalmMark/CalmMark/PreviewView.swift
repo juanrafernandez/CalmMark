@@ -220,7 +220,8 @@ struct WebViewWrapper: NSViewRepresentable {
             let estimatedLine = max(1, Int(Double(currentManager.totalLines) * clampedPercentage))
 
             LogManager.shared.log(.debug, "Preview scroll: estimado línea \(estimatedLine) (\(clampedPercentage))", context: "WebView")
-            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: estimatedLine, total: currentManager.totalLines, source: .preview)
+            // For preview scroll, we don't have the line text, so pass empty string
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: estimatedLine, total: currentManager.totalLines, lineText: "", source: .preview)
         }
 
         func syncScroll(to percentage: Double) {
@@ -235,52 +236,63 @@ struct WebViewWrapper: NSViewRepresentable {
             // Mark as syncing to prevent loop
             isSyncing = true
 
-            // Get line number from manager
+            // Get the actual line text from the scroll manager
             let manager = ScrollSyncManager.shared
-            let targetLine = manager.currentLine
+            let markdownText = manager.currentLineText
 
-            LogManager.shared.log(.debug, "Preview sync: buscando línea \(targetLine) del markdown", context: "WebView")
+            if !markdownText.isEmpty {
+                LogManager.shared.log(.debug, "Preview sync: buscando texto '\(markdownText.prefix(50))...'", context: "WebView")
+                scrollToText(markdownText, in: webView)
+            } else {
+                LogManager.shared.log(.debug, "Preview sync: texto de línea vacío", context: "WebView")
+                isSyncing = false
+            }
+        }
+
+        // Function to search for text in preview and scroll to it
+        func scrollToText(_ searchText: String, in webView: WKWebView) {
+            // Clean the search text - remove markdown syntax
+            let cleanText = searchText
+                .replacingOccurrences(of: "^#{1,6}\\s+", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "^>\\s+", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "^[-*+]\\s+", with: "", options: .regularExpression)
+                .replacingOccurrences(of: "^\\d+\\.\\s+", with: "", options: .regularExpression)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+
+            // Escape the text for JavaScript
+            let escapedText = cleanText
+                .replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "'", with: "\\'")
+                .replacingOccurrences(of: "\n", with: "\\n")
 
             let script = """
             (function() {
                 try {
-                    // Find element with data-source-line closest to or equal to target
-                    const targetLine = \(targetLine);
-                    const allElements = document.querySelectorAll('[data-source-line]');
+                    const searchText = '\(escapedText)';
 
-                    if (allElements.length === 0) {
-                        // Fallback to percentage if no line markers
-                        const linePercentage = \(manager.totalLines) > 1 ? (\(targetLine) - 1) / (\(manager.totalLines) - 1) : 0;
-                        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-                        window.scrollTo({ top: Math.round(linePercentage * maxScroll), left: 0, behavior: 'instant' });
-                        return true;
+                    // Function to get text content of an element
+                    function getTextContent(element) {
+                        return element.textContent.trim();
                     }
 
-                    // Find closest element to target line
-                    let closestElement = null;
-                    let closestDiff = Infinity;
+                    // Search in all block elements
+                    const elements = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, li, pre, blockquote');
 
-                    for (const el of allElements) {
-                        const sourceLine = parseInt(el.getAttribute('data-source-line'));
-                        const diff = Math.abs(sourceLine - targetLine);
-                        if (diff < closestDiff) {
-                            closestDiff = diff;
-                            closestElement = el;
-                        }
-                        // Stop if we found exact match
-                        if (sourceLine === targetLine) {
-                            break;
+                    for (const el of elements) {
+                        const text = getTextContent(el);
+                        // Check if this element contains the search text
+                        if (text.includes(searchText) || searchText.includes(text.substring(0, 30))) {
+                            // Found it! Scroll to this element
+                            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            console.log('Scrolled to:', text.substring(0, 50));
+                            return true;
                         }
                     }
 
-                    if (closestElement) {
-                        // Scroll so element is at the top of the viewport
-                        closestElement.scrollIntoView({ behavior: 'instant', block: 'start' });
-                        return true;
-                    }
-
+                    console.log('Text not found:', searchText);
                     return false;
                 } catch(e) {
+                    console.error('Error searching:', e);
                     return false;
                 }
             })();
@@ -288,19 +300,23 @@ struct WebViewWrapper: NSViewRepresentable {
 
             webView.evaluateJavaScript(script) { result, error in
                 if let error = error {
-                    LogManager.shared.log(.error, "Error sincronizando scroll: \(error.localizedDescription)", context: "WebView")
-                } else if let success = result as? Bool, !success {
-                    LogManager.shared.log(.error, "JavaScript scroll falló internamente", context: "WebView")
+                    LogManager.shared.log(.error, "Error en búsqueda de texto: \(error.localizedDescription)", context: "WebView")
+                } else if let success = result as? Bool {
+                    if success {
+                        LogManager.shared.log(.debug, "Texto encontrado y scroll aplicado", context: "WebView")
+                    } else {
+                        LogManager.shared.log(.debug, "Texto no encontrado en preview", context: "WebView")
+                    }
                 }
-            }
 
-            // Keep isSyncing = true for longer to avoid detecting our own scroll
-            let workItem = DispatchWorkItem { [weak self] in
-                self?.isSyncing = false
-                LogManager.shared.log(.debug, "Preview sync finalizado", context: "WebView")
+                // Reset syncing flag after a delay
+                let workItem = DispatchWorkItem { [weak self] in
+                    self?.isSyncing = false
+                    LogManager.shared.log(.debug, "Preview sync finalizado", context: "WebView")
+                }
+                self.syncTimer = workItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
             }
-            syncTimer = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
