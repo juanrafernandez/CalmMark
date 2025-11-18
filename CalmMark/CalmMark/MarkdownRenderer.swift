@@ -151,18 +151,13 @@ class MarkdownRenderer {
         }
 
         // Helper to find markdown line containing text
-        // startingFrom: 0-based index to start search (for sequential processing)
-        func findMarkdownLine(containing searchText: String, startingFrom: Int = 0) -> Int? {
+        func findMarkdownLine(containing searchText: String) -> Int? {
             guard !searchText.isEmpty, searchText.count >= 3 else { return nil }
 
             // Take first 30 chars for matching
             let needle = String(searchText.prefix(30)).lowercased()
 
-            // Start search from specified line (already 0-based)
-            let startIndex = max(0, min(startingFrom, markdownLines.count - 1))
-
-            for index in startIndex..<markdownLines.count {
-                let line = markdownLines[index]
+            for (index, line) in markdownLines.enumerated() {
                 let cleanLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
 
                 // Skip empty lines
@@ -187,9 +182,6 @@ class MarkdownRenderer {
         // Process ALL opening tags of each type
         // This is more robust than trying to match full elements with content
 
-        // Track last found line to ensure sequential mapping
-        var lastFoundLine = 0
-
         // Headers (h1-h6)
         var headersFound = 0
         for level in 1...6 {
@@ -211,7 +203,7 @@ class MarkdownRenderer {
 
                         let textContent = extractAllText(content)
 
-                        if let lineNum = findMarkdownLine(containing: textContent, startingFrom: lastFoundLine) {
+                        if let lineNum = findMarkdownLine(containing: textContent) {
                             // Insert attribute right after opening tag
                             let replacement = fullMatch.replacingOccurrences(
                                 of: "<h\(level)(?:\\s[^>]*)?>",
@@ -222,8 +214,6 @@ class MarkdownRenderer {
                             result.replaceSubrange(fullRange, with: replacement)
                             elementsProcessed += 1
                             headersFound += 1
-                            // Update last found line (lineNum is 1-based, convert to 0-based)
-                            lastFoundLine = lineNum - 1
                         }
                     }
                 }
@@ -248,7 +238,7 @@ class MarkdownRenderer {
 
                     let textContent = extractAllText(content)
 
-                    if let lineNum = findMarkdownLine(containing: textContent, startingFrom: lastFoundLine) {
+                    if let lineNum = findMarkdownLine(containing: textContent) {
                         let replacement = fullMatch.replacingOccurrences(
                             of: "<p(?:\\s[^>]*)?>",
                             with: "<p data-source-line=\"\(lineNum)\" class=\"line\">",
@@ -258,8 +248,6 @@ class MarkdownRenderer {
                         result.replaceSubrange(fullRange, with: replacement)
                         elementsProcessed += 1
                         paragraphsFound += 1
-                        // Update last found line (lineNum is 1-based, convert to 0-based)
-                        lastFoundLine = lineNum - 1
                     }
                 }
             }
@@ -283,7 +271,7 @@ class MarkdownRenderer {
 
                     let textContent = extractAllText(content)
 
-                    if let lineNum = findMarkdownLine(containing: textContent, startingFrom: lastFoundLine) {
+                    if let lineNum = findMarkdownLine(containing: textContent) {
                         let replacement = fullMatch.replacingOccurrences(
                             of: "<li(?:\\s[^>]*)?>",
                             with: "<li data-source-line=\"\(lineNum)\" class=\"line\">",
@@ -293,8 +281,6 @@ class MarkdownRenderer {
                         result.replaceSubrange(fullRange, with: replacement)
                         elementsProcessed += 1
                         listItemsFound += 1
-                        // Update last found line (lineNum is 1-based, convert to 0-based)
-                        lastFoundLine = lineNum - 1
                     }
                 }
             }
@@ -318,7 +304,7 @@ class MarkdownRenderer {
 
                     let textContent = extractAllText(content)
 
-                    if let lineNum = findMarkdownLine(containing: textContent, startingFrom: lastFoundLine) {
+                    if let lineNum = findMarkdownLine(containing: textContent) {
                         let replacement = fullMatch.replacingOccurrences(
                             of: "<blockquote(?:\\s[^>]*)?>",
                             with: "<blockquote data-source-line=\"\(lineNum)\" class=\"line\">",
@@ -328,8 +314,6 @@ class MarkdownRenderer {
                         result.replaceSubrange(fullRange, with: replacement)
                         elementsProcessed += 1
                         blockquotesFound += 1
-                        // Update last found line (lineNum is 1-based, convert to 0-based)
-                        lastFoundLine = lineNum - 1
                     }
                 }
             }
@@ -349,9 +333,8 @@ class MarkdownRenderer {
 
                     if fullMatch.contains("data-source-line") { continue }
 
-                    // Find first ``` in markdown starting from lastFoundLine
-                    for index in lastFoundLine..<markdownLines.count {
-                        let line = markdownLines[index]
+                    // Find first ``` in markdown
+                    for (index, line) in markdownLines.enumerated() {
                         if line.contains("```") {
                             let lineNum = index + 1
                             let replacement = fullMatch.replacingOccurrences(
@@ -363,8 +346,6 @@ class MarkdownRenderer {
                             result.replaceSubrange(fullRange, with: replacement)
                             elementsProcessed += 1
                             codeBlocksFound += 1
-                            // Update last found line (lineNum is 1-based, convert to 0-based)
-                            lastFoundLine = lineNum - 1
                             break
                         }
                     }
