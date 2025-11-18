@@ -279,13 +279,13 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
             LogManager.shared.log(.success, "✅ Editor scrolled to línea \(targetLine) at \(Int(clampedY))px", context: "Editor")
 
-            // Keep isSyncing = true for longer to avoid detecting our own scroll
+            // Keep isSyncing = true briefly to avoid detecting our own scroll
             let workItem = DispatchWorkItem { [weak self] in
                 self?.isSyncing = false
                 LogManager.shared.log(.debug, "Editor sync finalizado", context: "Editor")
             }
             syncTimer = workItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
         }
 
         func textDidChange(_ notification: Notification) {
