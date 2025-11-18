@@ -215,8 +215,12 @@ struct WebViewWrapper: NSViewRepresentable {
                 clampedPercentage = 1.0
             }
 
-            LogManager.shared.log(.debug, "Preview scroll manual detectado: \(clampedPercentage)", context: "WebView")
-            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .preview)
+            // Estimate line based on percentage (preview mirrors editor proportionally)
+            let currentManager = ScrollSyncManager.shared
+            let estimatedLine = max(1, Int(Double(currentManager.totalLines) * clampedPercentage))
+
+            LogManager.shared.log(.debug, "Preview scroll: estimado línea \(estimatedLine) (\(clampedPercentage))", context: "WebView")
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: estimatedLine, total: currentManager.totalLines, source: .preview)
         }
 
         func syncScroll(to percentage: Double) {
@@ -230,7 +234,12 @@ struct WebViewWrapper: NSViewRepresentable {
 
             // Mark as syncing to prevent loop
             isSyncing = true
-            LogManager.shared.log(.debug, "Preview sync scroll programático a: \(percentage)", context: "WebView")
+
+            // Get line-based scroll position from manager
+            let manager = ScrollSyncManager.shared
+            let linePercentage = manager.totalLines > 1 ? Double(manager.currentLine - 1) / Double(manager.totalLines - 1) : 0.0
+
+            LogManager.shared.log(.debug, "Preview sync: línea \(manager.currentLine)/\(manager.totalLines) = \(linePercentage)", context: "WebView")
 
             let script = """
             (function() {
@@ -240,12 +249,12 @@ struct WebViewWrapper: NSViewRepresentable {
                     const maxScroll = Math.max(0, docHeight - winHeight);
 
                     let targetScroll;
-                    if (\(percentage) <= 0.0) {
+                    if (\(linePercentage) <= 0.0) {
                         targetScroll = 0;
-                    } else if (\(percentage) >= 1.0) {
+                    } else if (\(linePercentage) >= 1.0) {
                         targetScroll = maxScroll;
                     } else {
-                        targetScroll = Math.round(\(percentage) * maxScroll);
+                        targetScroll = Math.round(\(linePercentage) * maxScroll);
                     }
 
                     window.scrollTo({

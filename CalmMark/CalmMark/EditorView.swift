@@ -155,7 +155,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
             // Don't report scroll events during programmatic scrolling
             guard !isSyncing,
                   let scrollView = notification.object as? NSScrollView,
-                  let documentView = scrollView.documentView else {
+                  let documentView = scrollView.documentView,
+                  let textView = documentView as? NSTextView else {
                 return
             }
 
@@ -175,8 +176,20 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 clampedPercentage = 1.0
             }
 
-            LogManager.shared.log(.debug, "Editor scroll manual detectado: \(clampedPercentage)", context: "Editor")
-            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .editor)
+            // Calculate visible line number
+            let text = textView.string
+            let totalLines = max(1, text.components(separatedBy: .newlines).count)
+
+            // Find the character index at the top of the visible area
+            let topPoint = NSPoint(x: visibleRect.minX, y: visibleRect.minY)
+            let charIndex = textView.characterIndexForInsertion(at: topPoint)
+
+            // Calculate which line that character is on
+            let textUpToPoint = String(text.prefix(charIndex))
+            let currentLine = max(1, textUpToPoint.components(separatedBy: .newlines).count)
+
+            LogManager.shared.log(.debug, "Editor scroll: línea \(currentLine)/\(totalLines) (\(clampedPercentage))", context: "Editor")
+            ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, line: currentLine, total: totalLines, source: .editor)
         }
 
         func syncScroll(to percentage: Double) {
@@ -190,7 +203,12 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
             // Mark as syncing to prevent loop
             isSyncing = true
-            LogManager.shared.log(.debug, "Editor sync scroll programático a: \(percentage)", context: "Editor")
+
+            // Get line-based scroll position from manager
+            let manager = ScrollSyncManager.shared
+            let linePercentage = manager.totalLines > 1 ? Double(manager.currentLine - 1) / Double(manager.totalLines - 1) : 0.0
+
+            LogManager.shared.log(.debug, "Editor sync: línea \(manager.currentLine)/\(manager.totalLines) = \(linePercentage)", context: "Editor")
 
             let documentHeight = documentView.bounds.height
             let scrollViewHeight = scrollView.contentView.bounds.height
@@ -200,7 +218,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 return
             }
 
-            let targetY = percentage * (documentHeight - scrollViewHeight)
+            let targetY = linePercentage * (documentHeight - scrollViewHeight)
             let clampedY = max(0, min(documentHeight - scrollViewHeight, targetY))
 
             var newOrigin = scrollView.contentView.bounds.origin
