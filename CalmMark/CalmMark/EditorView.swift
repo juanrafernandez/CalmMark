@@ -166,7 +166,14 @@ struct MarkdownTextEditor: NSViewRepresentable {
             guard documentHeight > scrollViewHeight else { return }
 
             let scrollPercentage = visibleRect.origin.y / (documentHeight - scrollViewHeight)
-            let clampedPercentage = max(0, min(1, scrollPercentage))
+            var clampedPercentage = max(0, min(1, scrollPercentage))
+
+            // Snap to extremes for better precision
+            if clampedPercentage < 0.01 {
+                clampedPercentage = 0.0
+            } else if clampedPercentage > 0.99 {
+                clampedPercentage = 1.0
+            }
 
             LogManager.shared.log(.debug, "Editor scroll manual detectado: \(clampedPercentage)", context: "Editor")
             ScrollSyncManager.shared.updateScroll(percentage: clampedPercentage, source: .editor)
