@@ -49,7 +49,6 @@ struct MarkdownTextEditor: NSViewRepresentable {
     var settings: AppSettings
     @Binding var textViewRef: NSTextView?
     @ObservedObject var scrollSync = ScrollSyncManager.shared
-    @State private var lastSyncedPercentage: Double = 0.0
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -131,8 +130,8 @@ struct MarkdownTextEditor: NSViewRepresentable {
         if scrollSync.isEnabled &&
            scrollSync.lastScrollSource == .preview &&
            !context.coordinator.isSyncing &&
-           abs(scrollSync.scrollPercentage - lastSyncedPercentage) > 0.001 {
-            lastSyncedPercentage = scrollSync.scrollPercentage
+           abs(scrollSync.scrollPercentage - context.coordinator.lastSyncedPercentage) > 0.001 {
+            context.coordinator.lastSyncedPercentage = scrollSync.scrollPercentage
             context.coordinator.syncScroll(to: scrollSync.scrollPercentage)
         }
     }
@@ -145,6 +144,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         var parent: MarkdownTextEditor
         weak var scrollView: NSScrollView?
         var isSyncing = false
+        var lastSyncedPercentage: Double = 0.0
         private var syncTimer: DispatchWorkItem?
 
         init(_ parent: MarkdownTextEditor) {
