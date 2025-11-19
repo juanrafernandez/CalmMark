@@ -262,21 +262,8 @@ private struct HTMLRenderer {
     private static func getLineNumber(for node: Markup, sourceText: String) -> Int? {
         guard let range = node.range else { return nil }
 
-        // Calculate line number from the source location
-        let lines = sourceText.split(separator: "\n", omittingEmptySubsequences: false)
-        var currentOffset = 0
-
-        for (index, line) in lines.enumerated() {
-            let lineLength = line.count + 1 // +1 for newline
-
-            if currentOffset + lineLength > range.lowerBound.column {
-                return index + 1 // 1-based line numbers
-            }
-
-            currentOffset += lineLength
-        }
-
-        return nil
+        // SourceLocation already contains the line number (1-based)
+        return range.lowerBound.line
     }
 }
 
