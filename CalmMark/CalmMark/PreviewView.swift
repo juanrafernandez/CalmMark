@@ -438,9 +438,11 @@ struct WebViewWrapper: NSViewRepresentable {
                         LogManager.shared.log(.success, "✅ Scroll restaurado a \(scrollY)px", context: "WebView")
                     }
 
-                    // Reset syncing flag después de un delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Reset syncing flag después de un delay MAYOR para evitar scroll events
+                    // Los eventos de scroll pueden llegar hasta 200ms después del scrollTo
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         self?.isSyncing = false
+                        LogManager.shared.log(.debug, "🔓 isSyncing=false después de restaurar scroll", context: "WebView")
                     }
                 }
             }
