@@ -545,8 +545,8 @@ struct PreviewPanelView: View {
                 showLeading: showOutline,
                 leading: {
                     OutlinePanelView(headings: headings) { lineNumber in
-                        // Scroll preview to line
-                        scrollPreviewToLine(lineNumber)
+                        // Scroll editor to line
+                        scrollEditorToLine(lineNumber)
                     }
                 },
                 trailing: {
@@ -568,10 +568,10 @@ struct PreviewPanelView: View {
         statistics = DocumentAnalyzer.analyzeDocument(activeFile.content)
     }
 
-    private func scrollPreviewToLine(_ lineNumber: Int) {
-        // Scroll preview using JavaScript notification
+    private func scrollEditorToLine(_ lineNumber: Int) {
+        // Scroll editor to line
         NotificationCenter.default.post(
-            name: .scrollPreviewToLine,
+            name: .scrollEditorToLine,
             object: lineNumber
         )
     }
@@ -602,5 +602,5 @@ struct PreviewPanelView: View {
 
 extension Notification.Name {
     static let toggleSidebar = Notification.Name("toggleSidebar")
-    static let scrollPreviewToLine = Notification.Name("scrollPreviewToLine")
+    static let scrollEditorToLine = Notification.Name("scrollEditorToLine")
 }
