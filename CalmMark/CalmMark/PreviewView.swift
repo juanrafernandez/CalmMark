@@ -209,16 +209,27 @@ struct WebViewWrapper: NSViewRepresentable {
             }
 
             // IMPORTANTE: Guardar posición de scroll actual ANTES de recargar
-            webView.evaluateJavaScript("window.scrollY") { result, error in
-                if let scrollY = result as? CGFloat {
-                    context.coordinator.savedScrollPosition = scrollY
-                    LogManager.shared.log(.debug, "💾 Guardada posición de scroll: \(Int(scrollY))px", context: "WebView")
-                }
-            }
+            // Solo guardar si el contenido está cargado, si no scrollY será 0
+            if context.coordinator.isContentLoaded {
+                webView.evaluateJavaScript("window.scrollY") { result, error in
+                    if let scrollY = result as? CGFloat {
+                        context.coordinator.savedScrollPosition = scrollY
+                        LogManager.shared.log(.debug, "💾 Guardada posición de scroll: \(Int(scrollY))px", context: "WebView")
+                    }
 
-            context.coordinator.lastLoadedHTML = html
-            context.coordinator.isContentLoaded = false  // Reset until didFinish
-            webView.loadHTMLString(html, baseURL: nil)
+                    // CRÍTICO: Recargar HTML DESPUÉS de guardar scroll, no antes
+                    context.coordinator.lastLoadedHTML = html
+                    context.coordinator.isContentLoaded = false  // Reset until didFinish
+                    webView.loadHTMLString(html, baseURL: nil)
+                }
+            } else {
+                // Primera carga, no hay scroll que guardar
+                LogManager.shared.log(.debug, "💾 Primera carga, no hay scroll que guardar", context: "WebView")
+                context.coordinator.savedScrollPosition = 0
+                context.coordinator.lastLoadedHTML = html
+                context.coordinator.isContentLoaded = false
+                webView.loadHTMLString(html, baseURL: nil)
+            }
         }
 
         // Sync scroll from editor - only if content is fully loaded
