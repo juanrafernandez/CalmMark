@@ -32,6 +32,7 @@
 		AA0001171A000001 /* CommandTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001171A000002 /* CommandTemplatesView.swift */; };
 		AA0002001A000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0002001A000002 /* Assets.xcassets */; };
 		AA0002011A000001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0002011A000002 /* Preview Assets.xcassets */; };
+		SWIFTMARKDOWN001 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = SWIFTMARKDOWN002 /* Markdown */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -70,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				SWIFTMARKDOWN001 /* Markdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -158,6 +160,9 @@
 			dependencies = (
 			);
 			name = CalmMark;
+			packageProductDependencies = (
+				SWIFTMARKDOWN002 /* Markdown */,
+			);
 			productName = CalmMark;
 			productReference = AA0000001A000001 /* CalmMark.app */;
 			productType = "com.apple.product-type.application";
@@ -186,6 +191,9 @@
 				Base,
 			);
 			mainGroup = AA0000001A000003;
+			packageReferences = (
+				SWIFTMARKDOWN003 /* XCRemoteSwiftPackageReference "swift-markdown" */,
+			);
 			productRefGroup = AA0000001A000004 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -433,6 +441,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		SWIFTMARKDOWN003 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swiftlang/swift-markdown.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.4.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		SWIFTMARKDOWN002 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = SWIFTMARKDOWN003 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = AA0000001A000009 /* Project object */;
 }
