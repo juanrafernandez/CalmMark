@@ -90,6 +90,14 @@ struct MarkdownTextEditor: NSViewRepresentable {
             object: scrollView
         )
 
+        // Observe outline navigation events
+        NotificationCenter.default.addObserver(
+            context.coordinator,
+            selector: #selector(Coordinator.scrollToLineFromOutline(_:)),
+            name: .scrollEditorToLine,
+            object: nil
+        )
+
         // Store reference for toolbar access
         DispatchQueue.main.async {
             textViewRef = textView
@@ -151,6 +159,100 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
         init(_ parent: MarkdownTextEditor) {
             self.parent = parent
+        }
+
+        @objc func scrollToLineFromOutline(_ notification: Notification) {
+            guard let lineNumber = notification.object as? Int else { return }
+            scrollToLine(lineNumber)
+        }
+
+        func scrollToLine(_ targetLine: Int) {
+            guard let scrollView = scrollView,
+                  let documentView = scrollView.documentView,
+                  let textView = documentView as? NSTextView else {
+                LogManager.shared.log(.debug, "📍 Outline scroll ignorado - views no disponibles", context: "Editor")
+                return
+            }
+
+            // Cancel any pending timer
+            syncTimer?.cancel()
+
+            // Mark as syncing to prevent loop
+            isSyncing = true
+
+            LogManager.shared.log(.debug, "📍 Outline → Editor: scrolling to línea \(targetLine)", context: "Editor")
+
+            // Get the text and split into lines
+            let text = textView.string
+            let lines = text.components(separatedBy: .newlines)
+
+            guard targetLine > 0 && targetLine <= lines.count else {
+                LogManager.shared.log(.warning, "⚠️ Línea \(targetLine) fuera de rango (total: \(lines.count))", context: "Editor")
+                isSyncing = false
+                return
+            }
+
+            // Calculate character index at the start of target line
+            var charIndex = 0
+            for i in 0..<(targetLine - 1) {
+                if i < lines.count {
+                    charIndex += lines[i].count + 1 // +1 for newline
+                }
+            }
+
+            // Ensure charIndex is within bounds
+            charIndex = min(charIndex, text.count)
+
+            // Use layout manager to get the actual pixel position of this character
+            guard let layoutManager = textView.layoutManager,
+                  let textContainer = textView.textContainer else {
+                LogManager.shared.log(.warning, "⚠️ Layout manager no disponible", context: "Editor")
+                isSyncing = false
+                return
+            }
+
+            // Get the glyph index for our character
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: charIndex)
+
+            // Get the line fragment rect for this glyph
+            let lineFragmentRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+
+            // Calculate the Y position in the document (center the line in viewport)
+            let targetY = lineFragmentRect.origin.y
+            let scrollViewHeight = scrollView.contentView.bounds.height
+            let documentHeight = documentView.bounds.height
+
+            guard documentHeight > scrollViewHeight else {
+                isSyncing = false
+                return
+            }
+
+            // Center the line in the viewport (optional - comment out to scroll to top)
+            let centeredY = targetY - (scrollViewHeight / 3) // Show line at 1/3 from top
+
+            // Clamp to valid scroll range
+            let clampedY = max(0, min(documentHeight - scrollViewHeight, centeredY))
+
+            LogManager.shared.log(.debug, "📍 Outline → Editor: charIndex=\(charIndex), targetY=\(Int(targetY))px, clampedY=\(Int(clampedY))px", context: "Editor")
+
+            // Scroll to the position
+            var newOrigin = scrollView.contentView.bounds.origin
+            newOrigin.y = clampedY
+            scrollView.contentView.setBoundsOrigin(newOrigin)
+
+            // Also select the line and move cursor there for visual feedback
+            textView.setSelectedRange(NSRange(location: charIndex, length: 0))
+            textView.scrollRangeToVisible(NSRange(location: charIndex, length: 0))
+
+            LogManager.shared.log(.success, "✅ Outline → Editor: scrolled to línea \(targetLine) at \(Int(clampedY))px", context: "Editor")
+
+            // Keep isSyncing = true briefly to avoid detecting our own scroll
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.isSyncing = false
+                LogManager.shared.log(.debug, "📍 Outline scroll finalizado", context: "Editor")
+            }
+            syncTimer = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: workItem)
         }
 
         @objc func scrollViewDidScroll(_ notification: Notification) {
