@@ -108,7 +108,15 @@ class DocumentAnalyzer {
         var imageCount = 0
         var codeBlockCount = 0
 
-        analyzeNodeRecursive(document, stats: &(wordCount, paragraphCount, headingCount, linkCount, imageCount, codeBlockCount))
+        var stats = (words: wordCount, paragraphs: paragraphCount, headings: headingCount, links: linkCount, images: imageCount, codeBlocks: codeBlockCount)
+        analyzeNodeRecursive(document, stats: &stats)
+
+        wordCount = stats.words
+        paragraphCount = stats.paragraphs
+        headingCount = stats.headings
+        linkCount = stats.links
+        imageCount = stats.images
+        codeBlockCount = stats.codeBlocks
 
         let characterCount = markdown.count
         let characterCountNoSpaces = markdown.filter { !$0.isWhitespace }.count
