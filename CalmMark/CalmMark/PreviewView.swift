@@ -328,7 +328,8 @@ struct WebViewWrapper: NSViewRepresentable {
                     console.log('📍 Previous:', previous.line, 'at', previous.offsetTop);
                     console.log('📍 Next:', next ? next.line + ' at ' + next.offsetTop : 'none');
 
-                    let scrollTo = previous.offsetTop;
+                    // Special case: always scroll to top (0px) for line 1
+                    let scrollTo = (targetLine === 1) ? 0 : previous.offsetTop;
 
                     // If we have both previous and next, interpolate between them
                     if (next && next.line !== previous.line) {
