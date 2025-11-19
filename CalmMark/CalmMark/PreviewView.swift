@@ -63,15 +63,8 @@ struct PreviewView: View {
         let preview = String(newHTML.prefix(200))
         LogManager.shared.log(.debug, "HTML generado (\(newHTML.count) caracteres). Inicio: \(preview)...", context: "Preview")
 
-        // Force reload if webView is already created
-        DispatchQueue.main.async {
-            if let webView = webView {
-                LogManager.shared.log(.info, "Cargando HTML en WebView con loadHTMLString", context: "Preview")
-                webView.loadHTMLString(newHTML, baseURL: nil)
-            } else {
-                LogManager.shared.log(.warning, "WebView aún no está inicializado", context: "Preview")
-            }
-        }
+        // IMPORTANTE: NO llamar a loadHTMLString aquí
+        // Dejar que updateNSView() lo maneje para que pueda guardar scroll position primero
     }
 }
 
