@@ -423,11 +423,20 @@ struct WebViewWrapper: NSViewRepresentable {
             if savedScrollPosition > 0 {
                 let scrollY = Int(savedScrollPosition)
                 LogManager.shared.log(.debug, "📍 Restaurando posición de scroll: \(scrollY)px", context: "WebView")
-                webView.evaluateJavaScript("window.scrollTo(0, \(scrollY))") { _, error in
+
+                // CRÍTICO: Marcar como syncing ANTES de restaurar para evitar loops
+                isSyncing = true
+
+                webView.evaluateJavaScript("window.scrollTo(0, \(scrollY))") { [weak self] _, error in
                     if let error = error {
                         LogManager.shared.log(.warning, "⚠️ Error restaurando scroll: \(error.localizedDescription)", context: "WebView")
                     } else {
                         LogManager.shared.log(.success, "✅ Scroll restaurado a \(scrollY)px", context: "WebView")
+                    }
+
+                    // Reset syncing flag después de un delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self?.isSyncing = false
                     }
                 }
             }
