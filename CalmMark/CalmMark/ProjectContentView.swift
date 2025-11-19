@@ -569,11 +569,23 @@ struct PreviewPanelView: View {
     }
 
     private func scrollEditorToLine(_ lineNumber: Int) {
-        // Scroll editor to line
+        // Scroll BOTH editor and preview to line
         NotificationCenter.default.post(
             name: .scrollEditorToLine,
             object: lineNumber
         )
+
+        // También scrollear el preview usando ScrollSyncManager
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            // Update scroll manager para que el preview también se mueva
+            ScrollSyncManager.shared.updateScroll(
+                percentage: 0.0, // No importa el percentage aquí
+                line: lineNumber,
+                total: ScrollSyncManager.shared.totalLines,
+                lineText: "",
+                source: .editor
+            )
+        }
     }
 
     // Simple HSplitView for outline/preview
