@@ -242,22 +242,20 @@ private struct HTMLRenderer {
         }
 
         // Render table head
-        if let head = table.head {
-            html += "<thead>\n"
-            for row in head.children {
-                html += renderTableRow(row, sourceText: sourceText, isHeader: true)
-            }
-            html += "</thead>\n"
+        let head = table.head
+        html += "<thead>\n"
+        for row in head.children {
+            html += renderTableRow(row, sourceText: sourceText, isHeader: true)
         }
+        html += "</thead>\n"
 
         // Render table body
-        if let body = table.body {
-            html += "<tbody>\n"
-            for row in body.children {
-                html += renderTableRow(row, sourceText: sourceText, isHeader: false)
-            }
-            html += "</tbody>\n"
+        let body = table.body
+        html += "<tbody>\n"
+        for row in body.children {
+            html += renderTableRow(row, sourceText: sourceText, isHeader: false)
         }
+        html += "</tbody>\n"
 
         html += "</table>\n"
         return html
