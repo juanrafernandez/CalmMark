@@ -121,6 +121,10 @@ struct ProjectContentView: View {
                     LogPanelView()
                 }
             }
+
+            // Status bar at the bottom
+            Divider()
+            StatusBarView(statistics: tabManager.activeFile != nil ? DocumentAnalyzer.analyzeDocument(tabManager.activeFile!.content) : nil)
         }
         .onReceive(NotificationCenter.default.publisher(for: .changeViewMode)) { notification in
             if let mode = notification.object as? ViewMode {
@@ -498,6 +502,11 @@ struct PreviewPanelView: View {
     @ObservedObject var settings: AppSettings
     var onClose: () -> Void
 
+    @State private var showOutline: Bool = true
+    @State private var outlineWidth: CGFloat = 200
+    @State private var headings: [HeadingItem] = []
+    @State private var statistics: DocumentStatistics? = nil
+
     var body: some View {
         VStack(spacing: 0) {
             // Header del panel de preview
@@ -510,6 +519,19 @@ struct PreviewPanelView: View {
                     .foregroundColor(.secondary)
 
                 Spacer()
+
+                // Toggle outline button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        showOutline.toggle()
+                    }
+                }) {
+                    Image(systemName: "list.bullet.indent")
+                        .font(.system(size: 12))
+                        .foregroundColor(showOutline ? .accentColor : .secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Toggle Outline")
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -517,9 +539,61 @@ struct PreviewPanelView: View {
 
             Divider()
 
-            // Preview actualizado en tiempo real
-            PreviewView(markdown: activeFile.content, settings: settings)
-                .id(activeFile.id) // Forzar recreación cuando cambia el archivo
+            // Preview con outline colapsable
+            HSplitView(
+                leadingWidth: $outlineWidth,
+                showLeading: showOutline,
+                leading: {
+                    OutlinePanelView(headings: headings) { lineNumber in
+                        // Scroll preview to line
+                        scrollPreviewToLine(lineNumber)
+                    }
+                },
+                trailing: {
+                    PreviewView(markdown: activeFile.content, settings: settings)
+                        .id(activeFile.id) // Forzar recreación cuando cambia el archivo
+                }
+            )
+        }
+        .onAppear {
+            updateAnalysis()
+        }
+        .onChange(of: activeFile.content) { _, _ in
+            updateAnalysis()
+        }
+    }
+
+    private func updateAnalysis() {
+        headings = DocumentAnalyzer.extractHeadings(from: activeFile.content)
+        statistics = DocumentAnalyzer.analyzeDocument(activeFile.content)
+    }
+
+    private func scrollPreviewToLine(_ lineNumber: Int) {
+        // Scroll preview using JavaScript notification
+        NotificationCenter.default.post(
+            name: .scrollPreviewToLine,
+            object: lineNumber
+        )
+    }
+
+    // Simple HSplitView for outline/preview
+    struct HSplitView<Leading: View, Trailing: View>: View {
+        @Binding var leadingWidth: CGFloat
+        let showLeading: Bool
+        @ViewBuilder let leading: () -> Leading
+        @ViewBuilder let trailing: () -> Trailing
+
+        var body: some View {
+            HStack(spacing: 0) {
+                if showLeading {
+                    leading()
+                        .frame(width: leadingWidth)
+
+                    Divider()
+                }
+
+                trailing()
+            }
         }
     }
 }
@@ -528,4 +602,5 @@ struct PreviewPanelView: View {
 
 extension Notification.Name {
     static let toggleSidebar = Notification.Name("toggleSidebar")
+    static let scrollPreviewToLine = Notification.Name("scrollPreviewToLine")
 }

@@ -147,11 +147,39 @@ class StylesheetGenerator {
 
         .task-list-item {
             list-style-type: none;
+            padding-left: 0.5em;
         }
 
-        .task-list-item input[type="checkbox"] {
-            margin: 0 0.5em 0.25em -1.6em;
+        .task-list-checkbox {
+            margin-right: 0.5em;
             vertical-align: middle;
+            cursor: not-allowed;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            border: 1.5px solid \(isDark ? "#6e7681" : "#d0d7de");
+            background-color: \(isDark ? "#0d1117" : "#ffffff");
+            position: relative;
+            transition: all 0.15s ease;
+        }
+
+        .task-list-checkbox:checked {
+            background-color: \(isDark ? "#238636" : "#0969da");
+            border-color: \(isDark ? "#238636" : "#0969da");
+        }
+
+        .task-list-checkbox:checked::after {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 1px;
+            width: 5px;
+            height: 9px;
+            border: solid white;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
         }
 
         /* Blockquotes */
