@@ -208,6 +208,14 @@ struct WebViewWrapper: NSViewRepresentable {
                 webView.stopLoading()
             }
 
+            // IMPORTANTE: Guardar posición de scroll actual ANTES de recargar
+            webView.evaluateJavaScript("window.scrollY") { result, error in
+                if let scrollY = result as? CGFloat {
+                    context.coordinator.savedScrollPosition = scrollY
+                    LogManager.shared.log(.debug, "💾 Guardada posición de scroll: \(Int(scrollY))px", context: "WebView")
+                }
+            }
+
             context.coordinator.lastLoadedHTML = html
             context.coordinator.isContentLoaded = false  // Reset until didFinish
             webView.loadHTMLString(html, baseURL: nil)
@@ -236,6 +244,7 @@ struct WebViewWrapper: NSViewRepresentable {
         var lastSyncedLine: Int = 0
         var lastLoadedHTML: String = ""
         var isContentLoaded = false
+        var savedScrollPosition: CGFloat = 0  // NUEVO: Guardar posición antes de reload
         private var syncTimer: DispatchWorkItem?
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -410,8 +419,18 @@ struct WebViewWrapper: NSViewRepresentable {
                 }
             }
 
-            // Don't force scroll restoration - let natural sync handle it
-            // This prevents the "bounce back" issue when user is manually scrolling
+            // IMPORTANTE: Restaurar posición de scroll guardada (si existe)
+            if savedScrollPosition > 0 {
+                let scrollY = Int(savedScrollPosition)
+                LogManager.shared.log(.debug, "📍 Restaurando posición de scroll: \(scrollY)px", context: "WebView")
+                webView.evaluateJavaScript("window.scrollTo(0, \(scrollY))") { _, error in
+                    if let error = error {
+                        LogManager.shared.log(.warning, "⚠️ Error restaurando scroll: \(error.localizedDescription)", context: "WebView")
+                    } else {
+                        LogManager.shared.log(.success, "✅ Scroll restaurado a \(scrollY)px", context: "WebView")
+                    }
+                }
+            }
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
