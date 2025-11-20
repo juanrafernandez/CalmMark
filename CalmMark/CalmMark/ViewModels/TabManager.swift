@@ -9,98 +9,6 @@ import Foundation
 import SwiftUI
 import Combine
 
-// MARK: - Open File Model
-
-class OpenFile: Identifiable, ObservableObject, Equatable {
-    let id = UUID()
-    let url: URL
-    @Published var content: String
-    @Published var isDirty: Bool = false
-    @Published var isNew: Bool
-    var cancellables = Set<AnyCancellable>()
-
-    var name: String {
-        url.lastPathComponent
-    }
-
-    var displayName: String {
-        isDirty ? "\(name) •" : name
-    }
-
-    init(url: URL, content: String, isNew: Bool = false) {
-        self.url = url
-        self.content = content
-        self.isNew = isNew
-    }
-
-    static func == (lhs: OpenFile, rhs: OpenFile) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func save() throws {
-        print("💾 [OpenFile.save] GUARDANDO ARCHIVO A DISCO: \(name)")
-        print("   📍 Stack trace para debug:")
-        Thread.callStackSymbols.forEach { print("      \($0)") }
-
-        try content.write(to: url, atomically: true, encoding: .utf8)
-        isDirty = false
-
-        // Limpiar hot exit cache cuando se guarda
-        HotExitManager.shared.clearCache(for: url)
-        print("✅ [OpenFile.save] Archivo guardado exitosamente")
-    }
-
-    func reload() throws {
-        content = try String(contentsOf: url, encoding: .utf8)
-        isDirty = false
-
-        // Limpiar hot exit cache cuando se recarga
-        HotExitManager.shared.clearCache(for: url)
-    }
-}
-
-// MARK: - Hot Exit Manager
-
-class HotExitManager {
-    static let shared = HotExitManager()
-    private let userDefaults = UserDefaults.standard
-    private let prefix = "hotExit_"
-
-    private init() {}
-
-    func saveUnsavedContent(for url: URL, content: String, isDirty: Bool) {
-        guard isDirty else {
-            // Si no está dirty, limpiar cualquier cache
-            clearCache(for: url)
-            return
-        }
-
-        let key = hotExitKey(for: url)
-        userDefaults.set(content, forKey: key)
-        // Log reducido - solo cuando es nuevo o cambio significativo
-        // print("💾 [HotExit] Saved unsaved content for: \(url.lastPathComponent)")
-    }
-
-    func loadUnsavedContent(for url: URL) -> String? {
-        let key = hotExitKey(for: url)
-        if let cachedContent = userDefaults.string(forKey: key) {
-            print("🔄 [HotExit] Restored unsaved content for: \(url.lastPathComponent)")
-            return cachedContent
-        }
-        return nil
-    }
-
-    func clearCache(for url: URL) {
-        let key = hotExitKey(for: url)
-        userDefaults.removeObject(forKey: key)
-        print("🗑️ [HotExit] Cleared cache for: \(url.lastPathComponent)")
-    }
-
-    private func hotExitKey(for url: URL) -> String {
-        return prefix + url.path
-    }
-}
-
 // MARK: - Tab Manager
 
 class TabManager: ObservableObject {
@@ -275,11 +183,11 @@ class TabManager: ObservableObject {
     }
 
     func discardAllChanges() {
-        print("🗑️ [TabManager] Discarding all unsaved changes...")
+        LogManager.shared.log(.info, "Descartando todos los cambios sin guardar...", context: "TabManager")
 
         for file in openFiles where file.isDirty {
             do {
-                print("   🔄 [TabManager] Reloading \(file.name) from disk")
+                LogManager.shared.log(.debug, "Recargando \(file.name) desde disco", context: "TabManager")
 
                 // 1. Limpiar Hot Exit cache
                 HotExitManager.shared.clearCache(for: file.url)
@@ -287,12 +195,12 @@ class TabManager: ObservableObject {
                 // 2. Recargar contenido desde el disco
                 try file.reload()
 
-                print("   ✅ [TabManager] Discarded changes for: \(file.name)")
+                LogManager.shared.log(.success, "Cambios descartados: \(file.name)", context: "TabManager")
             } catch {
-                print("   ❌ [TabManager] Error reloading file \(file.name): \(error)")
+                LogManager.shared.log(.error, "Error recargando \(file.name): \(error)", context: "TabManager")
             }
         }
 
-        print("✅ [TabManager] All changes discarded successfully")
+        LogManager.shared.log(.success, "Todos los cambios descartados exitosamente", context: "TabManager")
     }
 }
