@@ -250,6 +250,7 @@ struct WebViewWrapper: NSViewRepresentable {
         var isContentLoaded = false
         var savedScrollPosition: CGFloat = 0  // NUEVO: Guardar posición antes de reload
         private var syncTimer: DispatchWorkItem?
+        private var restoreScrollTimer: DispatchWorkItem?  // NUEVO: Timer para liberar isSyncing después de restaurar scroll
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             // Don't report scroll events during programmatic scrolling
@@ -428,6 +429,9 @@ struct WebViewWrapper: NSViewRepresentable {
                 let scrollY = Int(savedScrollPosition)
                 LogManager.shared.log(.debug, "📍 Restaurando posición de scroll: \(scrollY)px", context: "WebView")
 
+                // Cancelar cualquier timer de restauración pendiente
+                restoreScrollTimer?.cancel()
+
                 // CRÍTICO: Marcar como syncing ANTES de restaurar para evitar loops
                 isSyncing = true
 
@@ -438,12 +442,14 @@ struct WebViewWrapper: NSViewRepresentable {
                         LogManager.shared.log(.success, "✅ Scroll restaurado a \(scrollY)px", context: "WebView")
                     }
 
-                    // Reset syncing flag después de un delay MAYOR para evitar scroll events
-                    // Los eventos de scroll pueden llegar hasta 200ms después del scrollTo
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    // Reset syncing flag después de un delay para evitar scroll events
+                    // Los eventos de scroll pueden llegar hasta 400-500ms después del scrollTo
+                    let workItem = DispatchWorkItem { [weak self] in
                         self?.isSyncing = false
                         LogManager.shared.log(.debug, "🔓 isSyncing=false después de restaurar scroll", context: "WebView")
                     }
+                    self?.restoreScrollTimer = workItem
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
                 }
             }
         }
