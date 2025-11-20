@@ -153,9 +153,11 @@ struct MarkdownTextEditor: NSViewRepresentable {
         var parent: MarkdownTextEditor
         weak var scrollView: NSScrollView?
         var isSyncing = false
+        var isEditing = false  // NEW: Track if user is actively typing
         var lastSyncedPercentage: Double = 0.0
         var lastSyncedLine: Int = 0
         private var syncTimer: DispatchWorkItem?
+        private var editingTimer: DispatchWorkItem?  // NEW: Timer to reset isEditing
 
         init(_ parent: MarkdownTextEditor) {
             self.parent = parent
@@ -256,8 +258,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
         }
 
         @objc func scrollViewDidScroll(_ notification: Notification) {
-            // Don't report scroll events during programmatic scrolling
+            // Don't report scroll events during programmatic scrolling OR while editing
+            // This prevents scroll sync from fighting with the editor's automatic scroll-to-cursor
             guard !isSyncing,
+                  !isEditing,  // NEW: Ignore scroll events while user is typing
                   let scrollView = notification.object as? NSScrollView,
                   let documentView = scrollView.documentView,
                   let textView = documentView as? NSTextView else {
@@ -393,6 +397,21 @@ struct MarkdownTextEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+
+            // NEW: Mark as editing to prevent scroll sync during typing
+            // This stops the scroll position from jumping around while typing
+            isEditing = true
+
+            // Cancel any existing timer
+            editingTimer?.cancel()
+
+            // Reset isEditing after a short delay (user stopped typing)
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.isEditing = false
+            }
+            editingTimer = workItem
+            // Wait 0.5 seconds after last keystroke before enabling scroll sync again
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
 
             // Autocompletado Markdown
             handleMarkdownAutocompletion(in: textView)
