@@ -47,7 +47,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private var windowDelegate: ProjectWindowDelegate?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        print("🚀 [AppDelegate] Application did finish launching")
+        LogManager.shared.log(.info, "Application did finish launching", context: "AppDelegate")
 
         // Configurar window delegate después de un pequeño delay para que la ventana esté lista
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
@@ -57,15 +57,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     private func setupWindowDelegate() {
-        print("🔍 [AppDelegate] Setting up window delegate...")
-        print("🔍 [AppDelegate] Number of windows: \(NSApp.windows.count)")
+        LogManager.shared.log(.debug, "Setting up window delegate... (\(NSApp.windows.count) windows)", context: "AppDelegate")
 
         // Encontrar la ventana principal (ProjectContentView)
         if let mainWindow = NSApp.windows.first(where: { $0.isMainWindow || $0.isKeyWindow }) {
-            print("🪟 [AppDelegate] Found main window: \(mainWindow.title)")
+            LogManager.shared.log(.debug, "Found main window: \(mainWindow.title)", context: "AppDelegate")
 
             guard let tabManager = tabManagerBridge.tabManager else {
-                print("⚠️ [AppDelegate] TabManager not connected yet, will retry...")
+                LogManager.shared.log(.warning, "TabManager not connected yet, will retry...", context: "AppDelegate")
                 // Reintentar después de otro delay
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     self?.setupWindowDelegate()
@@ -76,12 +75,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             // Crear y configurar el delegate
             windowDelegate = ProjectWindowDelegate(tabManager: tabManager)
             mainWindow.delegate = windowDelegate
-            print("✅ [AppDelegate] Window delegate configured successfully!")
+            LogManager.shared.log(.success, "Window delegate configured successfully", context: "AppDelegate")
         } else if let anyWindow = NSApp.windows.first {
-            print("🪟 [AppDelegate] Using first available window: \(anyWindow.title)")
+            LogManager.shared.log(.debug, "Using first available window: \(anyWindow.title)", context: "AppDelegate")
 
             guard let tabManager = tabManagerBridge.tabManager else {
-                print("⚠️ [AppDelegate] TabManager not connected yet, will retry...")
+                LogManager.shared.log(.warning, "TabManager not connected yet, will retry...", context: "AppDelegate")
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                     self?.setupWindowDelegate()
                 }
@@ -90,38 +89,37 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
             windowDelegate = ProjectWindowDelegate(tabManager: tabManager)
             anyWindow.delegate = windowDelegate
-            print("✅ [AppDelegate] Window delegate configured successfully!")
+            LogManager.shared.log(.success, "Window delegate configured successfully", context: "AppDelegate")
         } else {
-            print("❌ [AppDelegate] No windows found")
+            LogManager.shared.log(.error, "No windows found", context: "AppDelegate")
         }
     }
 
     // Hacer que la app se cierre cuando se cierra la última ventana
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        print("🪟 [AppDelegate] Last window closed, app will terminate")
+        LogManager.shared.log(.info, "Last window closed, app will terminate", context: "AppDelegate")
         return true
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        print("🚪 [AppDelegate] applicationShouldTerminate called (from Cmd+Q or Quit menu)")
+        LogManager.shared.log(.info, "applicationShouldTerminate called", context: "AppDelegate")
 
         // Verificar si hay archivos con cambios sin guardar
         guard let tabManager = tabManagerBridge.tabManager else {
-            print("⚠️ [AppDelegate] TabManager is nil, terminating immediately")
+            LogManager.shared.log(.warning, "TabManager is nil, terminating immediately", context: "AppDelegate")
             return .terminateNow
         }
 
-        print("📋 [AppDelegate] TabManager connected, checking dirty files...")
         let dirtyFiles = tabManager.openFiles.filter { $0.isDirty }
-        print("📋 [AppDelegate] Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total")
+        LogManager.shared.log(.debug, "Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total", context: "AppDelegate")
 
         if dirtyFiles.isEmpty {
-            print("✅ [AppDelegate] No dirty files, terminating")
+            LogManager.shared.log(.info, "No dirty files, terminating", context: "AppDelegate")
             return .terminateNow
         }
 
         // Mostrar diálogo al usuario
-        print("🔔 [AppDelegate] Showing quit confirmation dialog...")
+        LogManager.shared.log(.info, "Showing quit confirmation dialog", context: "AppDelegate")
         let alert = NSAlert()
         alert.messageText = "Do you want to save changes before quitting?"
         alert.informativeText = "\(dirtyFiles.count) file(s) have unsaved changes."
@@ -134,16 +132,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         switch response {
         case .alertFirstButtonReturn: // Save All
-            print("💾 [AppDelegate] User chose: Save All")
+            LogManager.shared.log(.info, "User chose: Save All", context: "AppDelegate")
             tabManager.saveAllFiles()
             return .terminateNow
         case .alertSecondButtonReturn: // Don't Save
-            print("🗑️ [AppDelegate] User chose: Don't Save - discarding all changes")
+            LogManager.shared.log(.info, "User chose: Don't Save", context: "AppDelegate")
             // Limpiar Hot Exit cache y recargar archivos desde el disco
             tabManager.discardAllChanges()
             return .terminateNow
         default: // Cancel
-            print("🚫 [AppDelegate] User chose: Cancel")
+            LogManager.shared.log(.info, "User chose: Cancel", context: "AppDelegate")
             return .terminateCancel
         }
     }
@@ -165,23 +163,23 @@ class ProjectWindowDelegate: NSObject, NSWindowDelegate {
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        print("🚪 [WindowDelegate] windowShouldClose called (RED CLOSE BUTTON CLICKED)")
+        LogManager.shared.log(.info, "Window close requested", context: "WindowDelegate")
 
         guard let tabManager = tabManager else {
-            print("⚠️ [WindowDelegate] TabManager is nil, allowing close")
+            LogManager.shared.log(.warning, "TabManager is nil, allowing close", context: "WindowDelegate")
             return true
         }
 
         let dirtyFiles = tabManager.openFiles.filter { $0.isDirty }
-        print("📋 [WindowDelegate] Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total")
+        LogManager.shared.log(.debug, "Found \(dirtyFiles.count) dirty files out of \(tabManager.openFiles.count) total", context: "WindowDelegate")
 
         if dirtyFiles.isEmpty {
-            print("✅ [WindowDelegate] No dirty files, allowing close")
+            LogManager.shared.log(.info, "No dirty files, allowing close", context: "WindowDelegate")
             return true
         }
 
         // Mostrar diálogo al usuario
-        print("🔔 [WindowDelegate] Showing close confirmation dialog...")
+        LogManager.shared.log(.info, "Showing close confirmation dialog", context: "WindowDelegate")
         let alert = NSAlert()
         alert.messageText = "Do you want to save changes before closing?"
         alert.informativeText = "\(dirtyFiles.count) file(s) have unsaved changes."
@@ -194,16 +192,16 @@ class ProjectWindowDelegate: NSObject, NSWindowDelegate {
 
         switch response {
         case .alertFirstButtonReturn: // Save All
-            print("💾 [WindowDelegate] User chose: Save All")
+            LogManager.shared.log(.info, "User chose: Save All", context: "WindowDelegate")
             tabManager.saveAllFiles()
             return true
         case .alertSecondButtonReturn: // Don't Save
-            print("🗑️ [WindowDelegate] User chose: Don't Save - discarding all changes")
+            LogManager.shared.log(.info, "User chose: Don't Save", context: "WindowDelegate")
             // Limpiar Hot Exit cache y recargar archivos desde el disco
             tabManager.discardAllChanges()
             return true
         default: // Cancel
-            print("🚫 [WindowDelegate] User chose: Cancel - window will NOT close")
+            LogManager.shared.log(.info, "User chose: Cancel", context: "WindowDelegate")
             return false
         }
     }

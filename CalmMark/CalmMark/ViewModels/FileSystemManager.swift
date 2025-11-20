@@ -8,97 +8,6 @@
 import Foundation
 import AppKit
 
-// MARK: - File Item Model
-
-class FileItem: Identifiable, ObservableObject, Equatable {
-    let id = UUID()
-    let url: URL
-    let name: String
-    let isDirectory: Bool
-    let isClaudeCommand: Bool
-    @Published var isExpanded: Bool = false
-    @Published var children: [FileItem] = []
-
-    weak var parent: FileItem?
-
-    init(url: URL, parent: FileItem? = nil) {
-        self.url = url
-        self.name = url.lastPathComponent
-        self.parent = parent
-
-        var isDir: ObjCBool = false
-        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
-        self.isDirectory = isDir.boolValue
-
-        // Detect Claude command files
-        self.isClaudeCommand = url.pathComponents.contains(".claude") &&
-                               url.pathComponents.contains("commands") &&
-                               url.pathExtension == "md"
-    }
-
-    static func == (lhs: FileItem, rhs: FileItem) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    var isMarkdown: Bool {
-        let ext = url.pathExtension.lowercased()
-        return ext == "md" || ext == "markdown"
-    }
-
-    var icon: String {
-        if isClaudeCommand {
-            return "terminal.fill"
-        } else if isDirectory {
-            return isExpanded ? "folder.fill" : "folder"
-        } else if isMarkdown {
-            return "doc.text"
-        } else {
-            return "doc"
-        }
-    }
-
-    var iconColor: NSColor {
-        if isClaudeCommand {
-            return .systemPurple
-        } else if isDirectory {
-            return .systemBlue
-        } else if isMarkdown {
-            return .systemTeal
-        } else {
-            return .secondaryLabelColor
-        }
-    }
-
-    func loadChildren() {
-        guard isDirectory else { return }
-
-        do {
-            let contents = try FileManager.default.contentsOfDirectory(
-                at: url,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-
-            // Sort: directories first, then alphabetically
-            let sorted = contents.sorted { item1, item2 in
-                var isDir1: ObjCBool = false
-                var isDir2: ObjCBool = false
-                FileManager.default.fileExists(atPath: item1.path, isDirectory: &isDir1)
-                FileManager.default.fileExists(atPath: item2.path, isDirectory: &isDir2)
-
-                if isDir1.boolValue != isDir2.boolValue {
-                    return isDir1.boolValue
-                }
-                return item1.lastPathComponent.lowercased() < item2.lastPathComponent.lowercased()
-            }
-
-            children = sorted.map { FileItem(url: $0, parent: self) }
-        } catch {
-            print("Error loading children for \(url.path): \(error)")
-        }
-    }
-}
-
 // MARK: - File System Manager
 
 class FileSystemManager: ObservableObject {
@@ -144,16 +53,16 @@ class FileSystemManager: ObservableObject {
             // Guardar en UserDefaults
             UserDefaults.standard.set(bookmarkData, forKey: "lastOpenedFolderBookmark")
             UserDefaults.standard.set(url.path, forKey: "lastOpenedFolder")
-            print("📌 [FileSystemManager] Bookmark saved for: \(url.path)")
+            LogManager.shared.log(.success, "Bookmark guardado: \(url.path)", context: "FileSystemManager")
         } catch {
-            print("❌ [FileSystemManager] Error creating bookmark: \(error)")
+            LogManager.shared.log(.error, "Error creando bookmark: \(error)", context: "FileSystemManager")
         }
     }
 
     func restoreLastFolder() -> Bool {
         // Intentar restaurar desde bookmark
         guard let bookmarkData = UserDefaults.standard.data(forKey: "lastOpenedFolderBookmark") else {
-            print("⚠️ [FileSystemManager] No bookmark found")
+            LogManager.shared.log(.debug, "No se encontró bookmark guardado", context: "FileSystemManager")
             return false
         }
 
@@ -168,7 +77,7 @@ class FileSystemManager: ObservableObject {
 
             // Iniciar acceso con security scope
             guard url.startAccessingSecurityScopedResource() else {
-                print("❌ [FileSystemManager] Failed to access security-scoped resource")
+                LogManager.shared.log(.error, "Fallo al acceder al recurso con security scope", context: "FileSystemManager")
                 return false
             }
 
@@ -177,14 +86,14 @@ class FileSystemManager: ObservableObject {
 
             // Si el bookmark está obsoleto, recrearlo
             if isStale {
-                print("⚠️ [FileSystemManager] Bookmark is stale, recreating...")
+                LogManager.shared.log(.warning, "Bookmark obsoleto, recreando...", context: "FileSystemManager")
                 saveBookmark(for: url)
             }
 
-            print("✅ [FileSystemManager] Restored folder from bookmark: \(url.path)")
+            LogManager.shared.log(.success, "Carpeta restaurada desde bookmark: \(url.path)", context: "FileSystemManager")
             return true
         } catch {
-            print("❌ [FileSystemManager] Error restoring bookmark: \(error)")
+            LogManager.shared.log(.error, "Error restaurando bookmark: \(error)", context: "FileSystemManager")
             return false
         }
     }
@@ -224,9 +133,10 @@ class FileSystemManager: ObservableObject {
         do {
             try content.write(to: newFileURL, atomically: true, encoding: .utf8)
             folder.loadChildren()
+            LogManager.shared.log(.success, "Archivo creado: \(name)", context: "FileSystemManager")
             return true
         } catch {
-            print("Error creating file: \(error)")
+            LogManager.shared.log(.error, "Error creando archivo: \(error)", context: "FileSystemManager")
             return false
         }
     }
@@ -243,9 +153,10 @@ class FileSystemManager: ObservableObject {
                 withIntermediateDirectories: false
             )
             folder.loadChildren()
+            LogManager.shared.log(.success, "Carpeta creada: \(name)", context: "FileSystemManager")
             return true
         } catch {
-            print("Error creating folder: \(error)")
+            LogManager.shared.log(.error, "Error creando carpeta: \(error)", context: "FileSystemManager")
             return false
         }
     }
