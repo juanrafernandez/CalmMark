@@ -36,40 +36,48 @@
 		AA0002001A000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0002001A000002 /* Assets.xcassets */; };
 		AA0002011A000001 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0002011A000002 /* Preview Assets.xcassets */; };
 		SWIFTMARKDOWN001 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = SWIFTMARKDOWN002 /* Markdown */; };
+		NEWFILEIT0000002 /* FileItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWFILEIT0000001 /* FileItem.swift */; };
+		NEWFILEOPN000002 /* OpenFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWFILEOPN000001 /* OpenFile.swift */; };
+		NEWHOTEX0000002 /* HotExitManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWHOTEX0000001 /* HotExitManager.swift */; };
+		NEWPROTO0000002 /* Protocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWPROTO0000001 /* Protocols.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownFormattingToolbar.swift; sourceTree = "<group>"; };
-		35782CF22EC8F5D600427117 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPanelView.swift; sourceTree = "<group>"; };
-		35782CF42EC8F5DD00427117 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
-		35782CF92EC930E900427117 /* SplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitView.swift; sourceTree = "<group>"; };
-		35782D052ECB971600427117 /* ScrollSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollSyncManager.swift; sourceTree = "<group>"; };
+		35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Editor/MarkdownFormattingToolbar.swift; sourceTree = "<group>"; };
+		35782CF22EC8F5D600427117 /* LogPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Panels/LogPanelView.swift; sourceTree = "<group>"; };
+		35782CF42EC8F5DD00427117 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/LogManager.swift; sourceTree = "<group>"; };
+		35782CF92EC930E900427117 /* SplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Shared/SplitView.swift; sourceTree = "<group>"; };
+		35782D052ECB971600427117 /* ScrollSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/ScrollSyncManager.swift; sourceTree = "<group>"; };
 		AA0000001A000001 /* CalmMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalmMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkApp.swift; sourceTree = "<group>"; };
-		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkDocument.swift; sourceTree = "<group>"; };
-		AA0001021A000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		AA0001031A000002 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
-		AA0001041A000002 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewView.swift; sourceTree = "<group>"; };
-		AA0001051A000002 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreferencesView.swift; sourceTree = "<group>"; };
-		AA0001061A000002 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		AA0001071A000002 /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownRenderer.swift; sourceTree = "<group>"; };
-		AA0001081A000002 /* StylesheetGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StylesheetGenerator.swift; sourceTree = "<group>"; };
-		AA0001091A000002 /* ExportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportManager.swift; sourceTree = "<group>"; };
-		AA0001101A000002 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
-		AA0001111A000002 /* FileSystemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSystemManager.swift; sourceTree = "<group>"; };
-		AA0001121A000002 /* FileNavigatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileNavigatorView.swift; sourceTree = "<group>"; };
-		AA0001131A000002 /* TabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabManager.swift; sourceTree = "<group>"; };
-		AA0001141A000002 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabBarView.swift; sourceTree = "<group>"; };
-		AA0001151A000002 /* ProjectContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectContentView.swift; sourceTree = "<group>"; };
-		AA0001161A000002 /* CommandTemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandTemplateManager.swift; sourceTree = "<group>"; };
-		AA0001171A000002 /* CommandTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandTemplatesView.swift; sourceTree = "<group>"; };
-		AA0001181A000002 /* DocumentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentAnalyzer.swift; sourceTree = "<group>"; };
-		AA0001191A000002 /* OutlinePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutlinePanelView.swift; sourceTree = "<group>"; };
-		AA0001201A000002 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
+		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/CalmMarkApp.swift; sourceTree = "<group>"; };
+		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/CalmMarkDocument.swift; sourceTree = "<group>"; };
+		AA0001021A000002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ContentView.swift; sourceTree = "<group>"; };
+		AA0001031A000002 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Editor/EditorView.swift; sourceTree = "<group>"; };
+		AA0001041A000002 /* PreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Preview/PreviewView.swift; sourceTree = "<group>"; };
+		AA0001051A000002 /* PreferencesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Settings/PreferencesView.swift; sourceTree = "<group>"; };
+		AA0001061A000002 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App/AppSettings.swift; sourceTree = "<group>"; };
+		AA0001071A000002 /* MarkdownRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Markdown/MarkdownRenderer.swift; sourceTree = "<group>"; };
+		AA0001081A000002 /* StylesheetGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/Markdown/StylesheetGenerator.swift; sourceTree = "<group>"; };
+		AA0001091A000002 /* ExportManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/ExportManager.swift; sourceTree = "<group>"; };
+		AA0001101A000002 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Export/ExportView.swift; sourceTree = "<group>"; };
+		AA0001111A000002 /* FileSystemManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/FileSystemManager.swift; sourceTree = "<group>"; };
+		AA0001121A000002 /* FileNavigatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Project/FileNavigatorView.swift; sourceTree = "<group>"; };
+		AA0001131A000002 /* TabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewModels/TabManager.swift; sourceTree = "<group>"; };
+		AA0001141A000002 /* TabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Project/TabBarView.swift; sourceTree = "<group>"; };
+		AA0001151A000002 /* ProjectContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Project/ProjectContentView.swift; sourceTree = "<group>"; };
+		AA0001161A000002 /* CommandTemplateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/CommandTemplateManager.swift; sourceTree = "<group>"; };
+		AA0001171A000002 /* CommandTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Commands/CommandTemplatesView.swift; sourceTree = "<group>"; };
+		AA0001181A000002 /* DocumentAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Utilities/DocumentAnalyzer.swift; sourceTree = "<group>"; };
+		AA0001191A000002 /* OutlinePanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Panels/OutlinePanelView.swift; sourceTree = "<group>"; };
+		AA0001201A000002 /* StatusBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/Shared/StatusBarView.swift; sourceTree = "<group>"; };
 		AA0002001A000002 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA0002011A000002 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		AA0003001A000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AA0003011A000002 /* CalmMark.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CalmMark.entitlements; sourceTree = "<group>"; };
+		NEWFILEIT0000001 /* FileItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/FileItem.swift; sourceTree = "<group>"; };
+		NEWFILEOPN000001 /* OpenFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/OpenFile.swift; sourceTree = "<group>"; };
+		NEWHOTEX0000001 /* HotExitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/HotExitManager.swift; sourceTree = "<group>"; };
+		NEWPROTO0000001 /* Protocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/Protocols.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -84,15 +92,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		35782CF72EC9234E00427117 /* Components */ = {
-			isa = PBXGroup;
-			children = (
-				35782CF92EC930E900427117 /* SplitView.swift */,
-			);
-			path = Components;
-			sourceTree = "<group>";
-		};
-		AA0000001A000003 = {
+				AA0000001A000003 = {
 			isa = PBXGroup;
 			children = (
 				AA0001001A000003 /* CalmMark */,
@@ -108,35 +108,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
-		AA0001001A000003 /* CalmMark */ = {
+				AA0001001A000003 /* CalmMark */ = {
 			isa = PBXGroup;
 			children = (
-				35782CF72EC9234E00427117 /* Components */,
-				AA0001001A000002 /* CalmMarkApp.swift */,
-				AA0001011A000002 /* CalmMarkDocument.swift */,
-				AA0001021A000002 /* ContentView.swift */,
-				AA0001151A000002 /* ProjectContentView.swift */,
-				AA0001031A000002 /* EditorView.swift */,
-				AA0001041A000002 /* PreviewView.swift */,
-				35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */,
-				AA0001051A000002 /* PreferencesView.swift */,
-				AA0001101A000002 /* ExportView.swift */,
-				AA0001061A000002 /* AppSettings.swift */,
-				35782CF22EC8F5D600427117 /* LogPanelView.swift */,
-				AA0001111A000002 /* FileSystemManager.swift */,
-				35782CF42EC8F5DD00427117 /* LogManager.swift */,
-				AA0001121A000002 /* FileNavigatorView.swift */,
-				AA0001131A000002 /* TabManager.swift */,
-				AA0001141A000002 /* TabBarView.swift */,
-				AA0001161A000002 /* CommandTemplateManager.swift */,
-				AA0001171A000002 /* CommandTemplatesView.swift */,
-				AA0001181A000002 /* DocumentAnalyzer.swift */,
-				AA0001191A000002 /* OutlinePanelView.swift */,
-				AA0001201A000002 /* StatusBarView.swift */,
-				AA0001071A000002 /* MarkdownRenderer.swift */,
-				35782D052ECB971600427117 /* ScrollSyncManager.swift */,
-				AA0001081A000002 /* StylesheetGenerator.swift */,
-				AA0001091A000002 /* ExportManager.swift */,
+				GROUPAPP00000001 /* App */,
+				GROUPMODEL000001 /* Models */,
+				GROUPVIEWM000001 /* ViewModels */,
+				GROUPVIEWS000001 /* Views */,
+				GROUPSERVICES001 /* Services */,
+				GROUPUTILS000001 /* Utilities */,
 				AA0002001A000002 /* Assets.xcassets */,
 				AA0003001A000002 /* Info.plist */,
 				AA0003011A000002 /* CalmMark.entitlements */,
@@ -145,12 +125,148 @@
 			path = CalmMark;
 			sourceTree = "<group>";
 		};
-		AA0002001A000003 /* Preview Content */ = {
+		GROUPAPP00000001 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				AA0002011A000002 /* Preview Assets.xcassets */,
+				AA0001001A000002 /* CalmMarkApp.swift */,
+				AA0001061A000002 /* AppSettings.swift */,
 			);
-			path = "Preview Content";
+			path = App;
+			sourceTree = "<group>";
+		};
+		GROUPMODEL000001 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001011A000002 /* CalmMarkDocument.swift */,
+				NEWFILEIT0000001 /* FileItem.swift */,
+				NEWFILEOPN000001 /* OpenFile.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		GROUPVIEWM000001 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001131A000002 /* TabManager.swift */,
+				AA0001111A000002 /* FileSystemManager.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		GROUPVIEWS000001 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001021A000002 /* ContentView.swift */,
+				GROUPPROJECT0001 /* Project */,
+				GROUPEDITOR0001 /* Editor */,
+				GROUPPREVIEW0001 /* Preview */,
+				GROUPEXPORT0001 /* Export */,
+				GROUPSETTINGS001 /* Settings */,
+				GROUPCOMMANDS001 /* Commands */,
+				GROUPPANELS00001 /* Panels */,
+				GROUPSHARED00001 /* Shared */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		GROUPPROJECT0001 /* Project */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001151A000002 /* ProjectContentView.swift */,
+				AA0001121A000002 /* FileNavigatorView.swift */,
+				AA0001141A000002 /* TabBarView.swift */,
+			);
+			path = Project;
+			sourceTree = "<group>";
+		};
+		GROUPEDITOR0001 /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001031A000002 /* EditorView.swift */,
+				35782CF02EC8EDAD00427117 /* MarkdownFormattingToolbar.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+		GROUPPREVIEW0001 /* Preview */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001041A000002 /* PreviewView.swift */,
+			);
+			path = Preview;
+			sourceTree = "<group>";
+		};
+		GROUPEXPORT0001 /* Export */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001101A000002 /* ExportView.swift */,
+			);
+			path = Export;
+			sourceTree = "<group>";
+		};
+		GROUPSETTINGS001 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001051A000002 /* PreferencesView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		GROUPCOMMANDS001 /* Commands */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001171A000002 /* CommandTemplatesView.swift */,
+			);
+			path = Commands;
+			sourceTree = "<group>";
+		};
+		GROUPPANELS00001 /* Panels */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001191A000002 /* OutlinePanelView.swift */,
+				35782CF22EC8F5D600427117 /* LogPanelView.swift */,
+			);
+			path = Panels;
+			sourceTree = "<group>";
+		};
+		GROUPSHARED00001 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				35782CF92EC930E900427117 /* SplitView.swift */,
+				AA0001201A000002 /* StatusBarView.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		GROUPSERVICES001 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				35782CF42EC8F5DD00427117 /* LogManager.swift */,
+				AA0001161A000002 /* CommandTemplateManager.swift */,
+				35782D052ECB971600427117 /* ScrollSyncManager.swift */,
+				NEWHOTEX0000001 /* HotExitManager.swift */,
+				NEWPROTO0000001 /* Protocols.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		GROUPUTILS000001 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001181A000002 /* DocumentAnalyzer.swift */,
+				AA0001091A000002 /* ExportManager.swift */,
+				GROUPMARKDOWN001 /* Markdown */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		GROUPMARKDOWN001 /* Markdown */ = {
+			isa = PBXGroup;
+			children = (
+				AA0001071A000002 /* MarkdownRenderer.swift */,
+				AA0001081A000002 /* StylesheetGenerator.swift */,
+			);
+			path = Markdown;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -255,6 +371,11 @@
 				AA0001071A000001 /* MarkdownRenderer.swift in Sources */,
 				AA0001081A000001 /* StylesheetGenerator.swift in Sources */,
 				AA0001091A000001 /* ExportManager.swift in Sources */,
+			
+				NEWFILEIT0000002 /* FileItem.swift in Sources */,
+				NEWFILEOPN000002 /* OpenFile.swift in Sources */,
+				NEWHOTEX0000002 /* HotExitManager.swift in Sources */,
+				NEWPROTO0000002 /* Protocols.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
