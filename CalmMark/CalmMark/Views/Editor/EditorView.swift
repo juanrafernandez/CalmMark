@@ -513,15 +513,14 @@ struct MarkdownTextEditor: NSViewRepresentable {
         // Drag and drop support
         func textView(_ textView: NSTextView,
                      shouldAcceptDraggingInfo draggingInfo: NSDraggingInfo) -> Bool {
-            // Check if we have a file URL
+            // Accept any file URL to allow validation and error messages
             guard let items = draggingInfo.draggingPasteboard.pasteboardItems else {
                 return false
             }
 
             for item in items {
                 if let urlString = item.string(forType: .fileURL),
-                   let url = URL(string: urlString),
-                   url.pathExtension == "md" {
+                   let _ = URL(string: urlString) {
                     return true
                 }
             }
@@ -537,16 +536,48 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
             for item in items {
                 if let urlString = item.string(forType: .fileURL),
-                   let url = URL(string: urlString),
-                   url.pathExtension == "md" {
-                    // Read the file content
+                   let url = URL(string: urlString) {
+
+                    // Check if file extension is .md
+                    if url.pathExtension.lowercased() != "md" {
+                        // Show error alert for unsupported format
+                        DispatchQueue.main.async {
+                            let alert = NSAlert()
+                            alert.messageText = "Unsupported File Format"
+                            alert.informativeText = "CalmMark only supports Markdown (.md) files.\n\nThe file '\(url.lastPathComponent)' has the extension '.\(url.pathExtension)' which is not supported."
+                            alert.alertStyle = .warning
+                            alert.addButton(withTitle: "OK")
+                            alert.icon = NSImage(systemSymbolName: "doc.badge.exclamationmark", accessibilityDescription: "Unsupported file")
+                            alert.runModal()
+                        }
+
+                        LogManager.shared.log(.warning, "Dropped file rejected: '\(url.lastPathComponent)' (extension: .\(url.pathExtension))", context: "Editor")
+                        return false
+                    }
+
+                    // Valid .md file - read and open it
                     if let content = try? String(contentsOf: url, encoding: .utf8) {
                         // Post notification to open the file
                         NotificationCenter.default.post(
                             name: .openDroppedFile,
                             object: url
                         )
+
+                        LogManager.shared.log(.success, "Dropped file opened: '\(url.lastPathComponent)'", context: "Editor")
                         return true
+                    } else {
+                        // Error reading file
+                        DispatchQueue.main.async {
+                            let alert = NSAlert()
+                            alert.messageText = "Could Not Read File"
+                            alert.informativeText = "Unable to read the contents of '\(url.lastPathComponent)'.\n\nThe file may be corrupted or inaccessible."
+                            alert.alertStyle = .critical
+                            alert.addButton(withTitle: "OK")
+                            alert.runModal()
+                        }
+
+                        LogManager.shared.log(.error, "Failed to read dropped file: '\(url.lastPathComponent)'", context: "Editor")
+                        return false
                     }
                 }
             }
