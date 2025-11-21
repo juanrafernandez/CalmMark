@@ -120,8 +120,10 @@ struct MarkdownTextEditor: NSViewRepresentable {
             )
         }
 
-        // Update text if different (avoid cursor jumps)
-        if textView.string != text {
+        // CRÍTICO: NO actualizar texto mientras el usuario está escribiendo
+        // Esto previene el autoscroll causado por setSelectedRange durante la escritura
+        // Solo actualizar si el cambio vino de fuera (binding externo) y NO del usuario escribiendo
+        if textView.string != text && !context.coordinator.isEditing {
             let selectedRange = textView.selectedRange()
             textView.string = text
             if selectedRange.location <= textView.string.count {
