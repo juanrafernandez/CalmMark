@@ -49,9 +49,9 @@ struct PreviewView: View {
 
         updateTask = task
 
-        // Actualizar después de 500ms de inactividad
-        // Aumentado de 150ms a 500ms para reducir recargas durante edición rápida
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: task)
+        // Actualizar después de 200ms de inactividad para actualizaciones más en vivo
+        // Reducido de 500ms a 200ms para mejor respuesta en tiempo real
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: task)
     }
 
     private func updateHTML(_ markdown: String) {
@@ -195,30 +195,24 @@ struct WebViewWrapper: NSViewRepresentable {
 
         // Check if HTML content changed
         if context.coordinator.lastLoadedHTML != html {
-            LogManager.shared.log(.debug, "updateNSView: HTML cambió, recargando WebView (\(html.count) caracteres)", context: "WebView")
+            LogManager.shared.log(.debug, "updateNSView: HTML cambió (\(html.count) caracteres)", context: "WebView")
 
             if webView.isLoading {
                 LogManager.shared.log(.debug, "WebView está cargando, deteniendo carga anterior", context: "WebView")
                 webView.stopLoading()
             }
 
-            // IMPORTANTE: Guardar posición de scroll actual ANTES de recargar
-            // Solo guardar si el contenido está cargado, si no scrollY será 0
+            // IMPORTANTE: Si el contenido ya está cargado, actualizar solo el HTML usando JavaScript
+            // Esto evita el autoscroll causado por loadHTMLString
             if context.coordinator.isContentLoaded {
-                webView.evaluateJavaScript("window.scrollY") { result, error in
-                    if let scrollY = result as? CGFloat {
-                        context.coordinator.savedScrollPosition = scrollY
-                        LogManager.shared.log(.debug, "💾 Guardada posición de scroll: \(Int(scrollY))px", context: "WebView")
-                    }
+                LogManager.shared.log(.debug, "🔄 Actualizando contenido con JavaScript (sin reload)", context: "WebView")
 
-                    // CRÍTICO: Recargar HTML DESPUÉS de guardar scroll, no antes
-                    context.coordinator.lastLoadedHTML = html
-                    context.coordinator.isContentLoaded = false  // Reset until didFinish
-                    webView.loadHTMLString(html, baseURL: nil)
-                }
+                // Extraer el contenido del body del nuevo HTML
+                context.coordinator.updateHTMLContent(webView, newHTML: html)
+                context.coordinator.lastLoadedHTML = html
             } else {
-                // Primera carga, no hay scroll que guardar
-                LogManager.shared.log(.debug, "💾 Primera carga, no hay scroll que guardar", context: "WebView")
+                // Primera carga: usar loadHTMLString
+                LogManager.shared.log(.debug, "💾 Primera carga con loadHTMLString", context: "WebView")
                 context.coordinator.savedScrollPosition = 0
                 context.coordinator.lastLoadedHTML = html
                 context.coordinator.isContentLoaded = false
@@ -254,6 +248,59 @@ struct WebViewWrapper: NSViewRepresentable {
         var savedScrollPosition: CGFloat = 0  // NUEVO: Guardar posición antes de reload
         private var syncTimer: DispatchWorkItem?
         private var restoreScrollTimer: DispatchWorkItem?  // NUEVO: Timer para liberar isSyncing después de restaurar scroll
+
+        // NUEVO: Actualizar contenido HTML sin recargar página (evita autoscroll)
+        func updateHTMLContent(_ webView: WKWebView, newHTML: String) {
+            // Escapar el contenido HTML para pasarlo como string a JavaScript
+            // Usar JSONEncoder para escapar correctamente todos los caracteres especiales
+            guard let htmlData = newHTML.data(using: .utf8),
+                  let jsonData = try? JSONSerialization.data(withJSONObject: [newHTML], options: []),
+                  let jsonString = String(data: jsonData, encoding: .utf8) else {
+                LogManager.shared.log(.warning, "⚠️ No se pudo serializar HTML", context: "WebView")
+                return
+            }
+
+            // Extraer solo el string del array JSON [string]
+            // Quitar los corchetes [ ] del inicio y fin
+            let escapedHTML = String(jsonString.dropFirst().dropLast())
+
+            // Script para reemplazar todo el documento sin afectar el scroll
+            let script = """
+            (function() {
+                try {
+                    const currentScrollY = window.scrollY;
+                    const htmlString = \(escapedHTML);
+                    const parser = new DOMParser();
+                    const newDoc = parser.parseFromString(htmlString, 'text/html');
+
+                    // Reemplazar head y body completamente
+                    document.head.innerHTML = newDoc.head.innerHTML;
+                    document.body.innerHTML = newDoc.body.innerHTML;
+
+                    // Restaurar scroll inmediatamente
+                    window.scrollTo(0, currentScrollY);
+
+                    return { success: true, scrollY: currentScrollY };
+                } catch(e) {
+                    return { success: false, error: e.toString() };
+                }
+            })();
+            """
+
+            webView.evaluateJavaScript(script) { result, error in
+                if let error = error {
+                    LogManager.shared.log(.error, "❌ Error actualizando contenido: \(error.localizedDescription)", context: "WebView")
+                } else if let resultDict = result as? [String: Any] {
+                    if let success = resultDict["success"] as? Bool, success {
+                        let scrollY = resultDict["scrollY"] as? Double ?? 0
+                        LogManager.shared.log(.success, "✅ Contenido actualizado sin autoscroll (scroll: \(Int(scrollY))px)", context: "WebView")
+                    } else {
+                        let errorMsg = resultDict["error"] as? String ?? "unknown"
+                        LogManager.shared.log(.warning, "⚠️ Error en JS: \(errorMsg)", context: "WebView")
+                    }
+                }
+            }
+        }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             // Don't report scroll events during programmatic scrolling
@@ -415,7 +462,7 @@ struct WebViewWrapper: NSViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            LogManager.shared.log(.success, "✅ Preview cargado exitosamente", context: "WebView")
+            LogManager.shared.log(.success, "✅ Preview cargado exitosamente (primera carga)", context: "WebView")
 
             // Mark content as loaded - now safe to execute JavaScript
             isContentLoaded = true
@@ -427,34 +474,9 @@ struct WebViewWrapper: NSViewRepresentable {
                 }
             }
 
-            // IMPORTANTE: Restaurar posición de scroll guardada (si existe)
-            if savedScrollPosition > 0 {
-                let scrollY = Int(savedScrollPosition)
-                LogManager.shared.log(.debug, "📍 Restaurando posición de scroll: \(scrollY)px", context: "WebView")
-
-                // Cancelar cualquier timer de restauración pendiente
-                restoreScrollTimer?.cancel()
-
-                // CRÍTICO: Marcar como syncing ANTES de restaurar para evitar loops
-                isSyncing = true
-
-                webView.evaluateJavaScript("window.scrollTo(0, \(scrollY))") { [weak self] _, error in
-                    if let error = error {
-                        LogManager.shared.log(.warning, "⚠️ Error restaurando scroll: \(error.localizedDescription)", context: "WebView")
-                    } else {
-                        LogManager.shared.log(.success, "✅ Scroll restaurado a \(scrollY)px", context: "WebView")
-                    }
-
-                    // Reset syncing flag después de un delay para evitar scroll events
-                    // Los eventos de scroll pueden llegar hasta 400-500ms después del scrollTo
-                    let workItem = DispatchWorkItem { [weak self] in
-                        self?.isSyncing = false
-                        LogManager.shared.log(.debug, "🔓 isSyncing=false después de restaurar scroll", context: "WebView")
-                    }
-                    self?.restoreScrollTimer = workItem
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
-                }
-            }
+            // NOTA: Ya no necesitamos restaurar scroll aquí para actualizaciones subsecuentes
+            // porque updateHTMLContent() mantiene el scroll usando JavaScript
+            // Solo restauramos para la primera carga (savedScrollPosition será 0)
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
