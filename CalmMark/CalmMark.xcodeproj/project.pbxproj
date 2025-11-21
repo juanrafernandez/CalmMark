@@ -12,6 +12,7 @@
 		35782CF52EC8F5DD00427117 /* LogManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF42EC8F5DD00427117 /* LogManager.swift */; };
 		35782CFA2EC930E900427117 /* SplitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782CF92EC930E900427117 /* SplitView.swift */; };
 		35782D062ECB971600427117 /* ScrollSyncManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782D052ECB971600427117 /* ScrollSyncManager.swift */; };
+		35782D0A2ED09BA000427117 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35782D092ED09BA000427117 /* SplashScreenView.swift */; };
 		AA0001001A000001 /* CalmMarkApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001001A000002 /* CalmMarkApp.swift */; };
 		AA0001011A000001 /* CalmMarkDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001011A000002 /* CalmMarkDocument.swift */; };
 		AA0001021A000001 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001021A000002 /* ContentView.swift */; };
@@ -48,6 +49,7 @@
 		35782CF42EC8F5DD00427117 /* LogManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogManager.swift; sourceTree = "<group>"; };
 		35782CF92EC930E900427117 /* SplitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplitView.swift; sourceTree = "<group>"; };
 		35782D052ECB971600427117 /* ScrollSyncManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollSyncManager.swift; sourceTree = "<group>"; };
+		35782D092ED09BA000427117 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
 		AA0000001A000001 /* CalmMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalmMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0001001A000002 /* CalmMarkApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkApp.swift; sourceTree = "<group>"; };
 		AA0001011A000002 /* CalmMarkDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalmMarkDocument.swift; sourceTree = "<group>"; };
@@ -273,6 +275,7 @@
 				GROUPCOMMANDS001 /* Commands */,
 				GROUPPANELS00001 /* Panels */,
 				GROUPSHARED00001 /* Shared */,
+				35782D092ED09BA000427117 /* SplashScreenView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -368,6 +371,7 @@
 				AA0001061A000001 /* AppSettings.swift in Sources */,
 				AA0001111A000001 /* FileSystemManager.swift in Sources */,
 				AA0001121A000001 /* FileNavigatorView.swift in Sources */,
+				35782D0A2ED09BA000427117 /* SplashScreenView.swift in Sources */,
 				AA0001131A000001 /* TabManager.swift in Sources */,
 				AA0001141A000001 /* TabBarView.swift in Sources */,
 				35782CF12EC8EDAD00427117 /* MarkdownFormattingToolbar.swift in Sources */,
