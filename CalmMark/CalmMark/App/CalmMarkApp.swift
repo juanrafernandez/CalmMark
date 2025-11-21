@@ -23,10 +23,19 @@ struct CalmMarkApp: App {
     @State private var showDocumentMode = false
     @State private var launchState: AppLaunchState
 
-    // Inicializar siempre en estado loading
+    // Verificar contenido ANTES de decidir el estado inicial
     init() {
-        _launchState = State(initialValue: .loading)
-        LogManager.shared.log(.info, "App starting with loading screen", context: "CalmMarkApp.init")
+        let hasContent = Self.checkForPreloadedContent()
+
+        if hasContent {
+            // Si hay contenido precargado, ir directamente a .ready (sin loading)
+            _launchState = State(initialValue: .ready)
+            LogManager.shared.log(.info, "App starting directly with content (skip loading)", context: "CalmMarkApp.init")
+        } else {
+            // Si no hay contenido, mostrar loading screen
+            _launchState = State(initialValue: .loading)
+            LogManager.shared.log(.info, "App starting with loading screen (no content)", context: "CalmMarkApp.init")
+        }
     }
 
     var body: some Scene {
@@ -71,6 +80,12 @@ struct CalmMarkApp: App {
     private func checkInitialState() {
         LogManager.shared.log(.info, "Checking initial state...", context: "CalmMarkApp")
 
+        // Si ya estamos en .ready (contenido precargado), no hacer nada
+        if launchState == .ready {
+            LogManager.shared.log(.info, "Already in ready state (content preloaded), skipping loading", context: "CalmMarkApp.checkInitialState")
+            return
+        }
+
         // Mostrar loading screen brevemente
         let loadingDuration: Double = 0.8
 
@@ -85,7 +100,7 @@ struct CalmMarkApp: App {
             )
 
             withAnimation(.easeInOut(duration: 0.4)) {
-                launchState = hasContent ? .ready : .initializing
+                self.launchState = hasContent ? .ready : .initializing
             }
         }
     }
