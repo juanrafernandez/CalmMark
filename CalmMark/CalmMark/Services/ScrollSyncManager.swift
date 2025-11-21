@@ -23,11 +23,17 @@ class ScrollSyncManager: ObservableObject {
     @Published var currentLineText: String = ""
     @Published var lastScrollSource: ScrollSource = .none
     @Published var isEnabled: Bool = true
+    @Published var isUserEditing: Bool = false  // Nuevo: true cuando usuario está escribiendo
 
     private init() {}
 
     func updateScroll(percentage: Double, line: Int, total: Int, lineText: String, source: ScrollSource) {
         guard isEnabled else { return }
+
+        // CRÍTICO: No hacer scroll sync mientras el usuario está escribiendo
+        // Esto previene que el preview se sincronice con el editor automático
+        // que sigue al cursor durante la escritura
+        guard !isUserEditing else { return }
 
         // Avoid infinite loops - only update if coming from a different source
         let lineChanged = (currentLine != line || totalLines != total)
