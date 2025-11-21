@@ -25,6 +25,9 @@ struct ProjectContentView: View {
     @State private var exportType: ExportType = .html
     @State private var showCommandTemplates = false
 
+    // Estado para controlar si estamos restaurando contenido precargado
+    @State private var isRestoringContent: Bool = false
+
     // CRITICAL: Force SwiftUI to redraw when activeFile changes
     @State private var updateTrigger: Int = 0
 
@@ -94,6 +97,12 @@ struct ProjectContentView: View {
                             .onAppear {
                                 print("✅ [ProjectContentView] EditorView appeared with file: \(activeFile.name)")
                             }
+                        } else if isRestoringContent {
+                            // Mostrar loading mientras se restaura contenido precargado
+                            RestoringContentView()
+                                .onAppear {
+                                    print("⏳ [ProjectContentView] RestoringContentView appeared")
+                                }
                         } else {
                             WelcomeView(
                                 fileManager: fileManager,
@@ -205,19 +214,45 @@ struct ProjectContentView: View {
             tabManagerBridge.tabManager = tabManager
             print("🔗 [ProjectContentView] TabManager connected to AppDelegate bridge")
 
+            // Verificar si hay contenido para restaurar
+            let hasBookmark = UserDefaults.standard.data(forKey: "lastOpenedFolderBookmark") != nil
+            let hasActiveFile = UserDefaults.standard.string(forKey: "lastActiveFile") != nil
+
+            if hasBookmark || hasActiveFile {
+                // Activar estado de restauración
+                isRestoringContent = true
+                print("⏳ [ProjectContentView] Starting content restoration...")
+            }
+
             // Restaurar última carpeta y archivo desde bookmarks
             if fileManager.restoreLastFolder() {
                 // Intentar restaurar el último archivo activo
                 if let lastFilePath = UserDefaults.standard.string(forKey: "lastActiveFile") {
                     let fileURL = URL(fileURLWithPath: lastFilePath)
                     if FileManager.default.fileExists(atPath: lastFilePath) {
-                        // Abrir el archivo después de un pequeño delay para que la carpeta cargue
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                            tabManager.openFile(url: fileURL)
-                            print("✅ [ProjectContentView] Restored active file: \(fileURL.lastPathComponent)")
+                        // Abrir el archivo inmediatamente (sin delay)
+                        tabManager.openFile(url: fileURL)
+                        print("✅ [ProjectContentView] Restored active file: \(fileURL.lastPathComponent)")
+
+                        // Desactivar estado de restauración después de que el archivo esté cargado
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            isRestoringContent = false
+                            print("✅ [ProjectContentView] Content restoration completed")
                         }
+                    } else {
+                        // Archivo no existe, desactivar restauración
+                        isRestoringContent = false
+                        print("⚠️ [ProjectContentView] Active file not found, skipping restoration")
                     }
+                } else {
+                    // No hay archivo activo, desactivar restauración
+                    isRestoringContent = false
+                    print("ℹ️ [ProjectContentView] No active file to restore")
                 }
+            } else {
+                // No se pudo restaurar la carpeta, desactivar restauración
+                isRestoringContent = false
+                print("⚠️ [ProjectContentView] Failed to restore folder")
             }
         }
         .onChange(of: tabManager.activeFile) { oldFile, newFile in
@@ -605,6 +640,41 @@ struct PreviewPanelView: View {
                 }
 
                 trailing()
+            }
+        }
+    }
+}
+
+// MARK: - Restoring Content View
+
+struct RestoringContentView: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Simple animated logo
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 50))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.green, .mint],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .opacity(isAnimating ? 1.0 : 0.4)
+                .scaleEffect(isAnimating ? 1.0 : 0.85)
+
+            Text("Restoring workspace...")
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .opacity(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.textBackgroundColor))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                isAnimating = true
             }
         }
     }
