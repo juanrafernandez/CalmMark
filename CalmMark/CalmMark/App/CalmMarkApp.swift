@@ -20,7 +20,19 @@ enum AppLaunchState {
 struct CalmMarkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var showDocumentMode = false
-    @State private var launchState: AppLaunchState = .initializing
+    @State private var launchState: AppLaunchState
+
+    // Inicializar estado basado en contenido previo
+    init() {
+        let hasPreloadedContent = Self.checkForPreloadedContent()
+        _launchState = State(initialValue: hasPreloadedContent ? .ready : .initializing)
+
+        LogManager.shared.log(
+            .info,
+            hasPreloadedContent ? "Inicio rápido: contenido previo detectado" : "Inicio normal: primera vez",
+            context: "CalmMarkApp.init"
+        )
+    }
 
     var body: some Scene {
         // Main Project/Folder mode
@@ -60,16 +72,36 @@ struct CalmMarkApp: App {
     // MARK: - App Initialization
 
     private func initializeApp() {
-        LogManager.shared.log(.info, "App initialization started", context: "CalmMarkApp")
+        LogManager.shared.log(.info, "App initialization started (splash screen)", context: "CalmMarkApp")
 
-        // Simulate checking for preloaded content
-        // This could check UserDefaults, bookmarks, etc.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        // Mostrar splash completo solo cuando no hay contenido previo
+        let splashDuration: Double = 1.5
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + splashDuration) {
             withAnimation(.easeInOut(duration: 0.5)) {
                 launchState = .ready
                 LogManager.shared.log(.success, "App initialization completed", context: "CalmMarkApp")
             }
         }
+    }
+
+    // Verificar si hay contenido previamente cargado (método estático para uso en init)
+    private static func checkForPreloadedContent() -> Bool {
+        let userDefaults = UserDefaults.standard
+
+        // Verificar si hay un bookmark de carpeta guardado
+        let hasBookmark = userDefaults.data(forKey: "lastOpenedFolderBookmark") != nil
+
+        // Verificar si hay un archivo activo guardado
+        let hasActiveFile = userDefaults.string(forKey: "lastActiveFile") != nil
+
+        LogManager.shared.log(
+            .debug,
+            "Preloaded content check - Bookmark: \(hasBookmark), Active file: \(hasActiveFile)",
+            context: "CalmMarkApp.checkForPreloadedContent"
+        )
+
+        return hasBookmark || hasActiveFile
     }
 }
 
