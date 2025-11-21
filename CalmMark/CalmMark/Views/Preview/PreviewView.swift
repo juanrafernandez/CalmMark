@@ -49,8 +49,9 @@ struct PreviewView: View {
 
         updateTask = task
 
-        // Actualizar después de 150ms de inactividad
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15, execute: task)
+        // Actualizar después de 500ms de inactividad
+        // Aumentado de 150ms a 500ms para reducir recargas durante edición rápida
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: task)
     }
 
     private func updateHTML(_ markdown: String) {
@@ -225,8 +226,10 @@ struct WebViewWrapper: NSViewRepresentable {
             }
         }
 
-        // Sync scroll from editor - only if content is fully loaded
+        // Sync scroll from editor - only if content is fully loaded AND user is not editing
+        // CRÍTICO: No sincronizar mientras el usuario está escribiendo para evitar saltos
         if scrollSync.isEnabled &&
+           !scrollSync.isUserEditing &&  // NUEVO: No sincronizar durante edición
            scrollSync.lastScrollSource == .editor &&
            !context.coordinator.isSyncing &&
            context.coordinator.isContentLoaded &&
