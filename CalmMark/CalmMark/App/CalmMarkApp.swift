@@ -23,19 +23,11 @@ struct CalmMarkApp: App {
     @State private var showDocumentMode = false
     @State private var launchState: AppLaunchState
 
-    // Verificar contenido ANTES de decidir el estado inicial
+    // Siempre empezar con loading para verificar contenido
     init() {
-        let hasContent = Self.checkForPreloadedContent()
-
-        if hasContent {
-            // Si hay contenido precargado, ir directamente a .ready (sin loading)
-            _launchState = State(initialValue: .ready)
-            LogManager.shared.log(.info, "App starting directly with content (skip loading)", context: "CalmMarkApp.init")
-        } else {
-            // Si no hay contenido, mostrar loading screen
-            _launchState = State(initialValue: .loading)
-            LogManager.shared.log(.info, "App starting with loading screen (no content)", context: "CalmMarkApp.init")
-        }
+        // Siempre mostrar loading screen inicial
+        _launchState = State(initialValue: .loading)
+        LogManager.shared.log(.info, "App starting with loading screen", context: "CalmMarkApp.init")
     }
 
     var body: some Scene {
@@ -80,27 +72,33 @@ struct CalmMarkApp: App {
     private func checkInitialState() {
         LogManager.shared.log(.info, "Checking initial state...", context: "CalmMarkApp")
 
-        // Si ya estamos en .ready (contenido precargado), no hacer nada
-        if launchState == .ready {
-            LogManager.shared.log(.info, "Already in ready state (content preloaded), skipping loading", context: "CalmMarkApp.checkInitialState")
-            return
-        }
+        // Verificar si hay contenido precargado
+        let hasContent = Self.checkForPreloadedContent()
 
-        // Mostrar loading screen brevemente
-        let loadingDuration: Double = 0.8
+        if hasContent {
+            // SI HAY CONTENIDO: Mostrar loading screen mientras se prepara
+            // Dar tiempo suficiente para que ProjectContentView cargue el contenido
+            let loadingDuration: Double = 0.6
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
-            // Verificar si hay contenido previo
-            let hasContent = Self.checkForPreloadedContent()
+            LogManager.shared.log(.info, "Content found, showing loading screen while preparing...", context: "CalmMarkApp.checkInitialState")
 
-            LogManager.shared.log(
-                .info,
-                hasContent ? "Content found, loading app..." : "No content, showing splash screen",
-                context: "CalmMarkApp.checkInitialState"
-            )
+            DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    self.launchState = .ready
+                    LogManager.shared.log(.success, "Transitioning to ready state with content", context: "CalmMarkApp.checkInitialState")
+                }
+            }
+        } else {
+            // SI NO HAY CONTENIDO: Mostrar loading brevemente, luego splash screen
+            let loadingDuration: Double = 0.5
 
-            withAnimation(.easeInOut(duration: 0.4)) {
-                self.launchState = hasContent ? .ready : .initializing
+            LogManager.shared.log(.info, "No content found, will show splash screen", context: "CalmMarkApp.checkInitialState")
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
+                withAnimation(.easeInOut(duration: 0.4)) {
+                    self.launchState = .initializing
+                    LogManager.shared.log(.info, "Transitioning to initializing state (splash screen)", context: "CalmMarkApp.checkInitialState")
+                }
             }
         }
     }
@@ -432,33 +430,70 @@ struct CalmMarkCommands: Commands {
 // MARK: - Loading View
 
 struct LoadingView: View {
-    @State private var isAnimating = false
+    @State private var scale: CGFloat = 0.8
+    @State private var opacity: Double = 0
+    @State private var rotationAngle: Double = 0
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Simple animated logo
-            Image(systemName: "leaf.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [.green, .mint],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+        VStack(spacing: 24) {
+            // Animated logo with glow effect
+            ZStack {
+                // Outer glow
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.green.opacity(0.2),
+                                Color.mint.opacity(0.1),
+                                Color.clear
+                            ],
+                            center: .center,
+                            startRadius: 15,
+                            endRadius: 60
+                        )
                     )
-                )
-                .opacity(isAnimating ? 1.0 : 0.3)
-                .scaleEffect(isAnimating ? 1.0 : 0.8)
+                    .frame(width: 120, height: 120)
+                    .scaleEffect(scale)
+                    .opacity(opacity * 0.8)
+
+                // Main logo
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.green, .mint],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .scaleEffect(scale)
+                    .opacity(opacity)
+                    .rotationEffect(.degrees(rotationAngle))
+            }
+
+            // App name
+            Text("CalmMark")
+                .font(.system(size: 28, weight: .semibold, design: .rounded))
+                .opacity(opacity)
 
             // Loading indicator
             ProgressView()
-                .scaleEffect(1.0)
-                .opacity(0.8)
+                .scaleEffect(1.1)
+                .opacity(opacity * 0.9)
+                .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(NSColor.textBackgroundColor))
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                isAnimating = true
+            // Entrance animation
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                scale = 1.0
+                opacity = 1.0
+            }
+
+            // Gentle rotation
+            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+                rotationAngle = 360
             }
         }
     }
