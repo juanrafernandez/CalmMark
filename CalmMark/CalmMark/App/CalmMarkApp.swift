@@ -12,8 +12,9 @@ import AppKit
 // MARK: - App Launch States
 
 enum AppLaunchState {
-    case initializing    // Showing splash screen
-    case ready          // Ready to show main content
+    case loading        // Initial loading screen (always shown)
+    case initializing   // Splash screen with drag & drop (no content)
+    case ready          // Ready to show main content (content exists)
 }
 
 @main
@@ -22,16 +23,10 @@ struct CalmMarkApp: App {
     @State private var showDocumentMode = false
     @State private var launchState: AppLaunchState
 
-    // Inicializar estado basado en contenido previo
+    // Inicializar siempre en estado loading
     init() {
-        let hasPreloadedContent = Self.checkForPreloadedContent()
-        _launchState = State(initialValue: hasPreloadedContent ? .ready : .initializing)
-
-        LogManager.shared.log(
-            .info,
-            hasPreloadedContent ? "Inicio rápido: contenido previo detectado" : "Inicio normal: primera vez",
-            context: "CalmMarkApp.init"
-        )
+        _launchState = State(initialValue: .loading)
+        LogManager.shared.log(.info, "App starting with loading screen", context: "CalmMarkApp.init")
     }
 
     var body: some Scene {
@@ -39,11 +34,13 @@ struct CalmMarkApp: App {
         WindowGroup("CalmMark") {
             Group {
                 switch launchState {
+                case .loading:
+                    LoadingView()
+                        .onAppear {
+                            checkInitialState()
+                        }
                 case .initializing:
                     SplashScreenView()
-                        .onAppear {
-                            initializeApp()
-                        }
                 case .ready:
                     ProjectContentView()
                         .environmentObject(appDelegate.tabManagerBridge)
@@ -71,16 +68,24 @@ struct CalmMarkApp: App {
 
     // MARK: - App Initialization
 
-    private func initializeApp() {
-        LogManager.shared.log(.info, "App initialization started (splash screen)", context: "CalmMarkApp")
+    private func checkInitialState() {
+        LogManager.shared.log(.info, "Checking initial state...", context: "CalmMarkApp")
 
-        // Mostrar splash completo solo cuando no hay contenido previo
-        let splashDuration: Double = 1.5
+        // Mostrar loading screen brevemente
+        let loadingDuration: Double = 0.8
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + splashDuration) {
-            withAnimation(.easeInOut(duration: 0.5)) {
-                launchState = .ready
-                LogManager.shared.log(.success, "App initialization completed", context: "CalmMarkApp")
+        DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
+            // Verificar si hay contenido previo
+            let hasContent = Self.checkForPreloadedContent()
+
+            LogManager.shared.log(
+                .info,
+                hasContent ? "Content found, loading app..." : "No content, showing splash screen",
+                context: "CalmMarkApp.checkInitialState"
+            )
+
+            withAnimation(.easeInOut(duration: 0.4)) {
+                launchState = hasContent ? .ready : .initializing
             }
         }
     }
@@ -404,6 +409,41 @@ struct CalmMarkCommands: Commands {
 
             Button("Horizontal Rule") {
                 NotificationCenter.default.post(name: .applyFormat, object: MarkdownFormat.horizontalRule)
+            }
+        }
+    }
+}
+
+// MARK: - Loading View
+
+struct LoadingView: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Simple animated logo
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [.green, .mint],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .opacity(isAnimating ? 1.0 : 0.3)
+                .scaleEffect(isAnimating ? 1.0 : 0.8)
+
+            // Loading indicator
+            ProgressView()
+                .scaleEffect(1.0)
+                .opacity(0.8)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(NSColor.textBackgroundColor))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                isAnimating = true
             }
         }
     }
