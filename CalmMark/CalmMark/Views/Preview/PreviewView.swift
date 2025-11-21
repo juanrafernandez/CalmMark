@@ -49,9 +49,9 @@ struct PreviewView: View {
 
         updateTask = task
 
-        // Actualizar después de 500ms de inactividad
-        // Aumentado de 150ms a 500ms para reducir recargas durante edición rápida
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: task)
+        // Actualizar después de 200ms de inactividad para actualizaciones más en vivo
+        // Reducido de 500ms a 200ms para mejor respuesta en tiempo real
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: task)
     }
 
     private func updateHTML(_ markdown: String) {

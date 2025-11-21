@@ -414,9 +414,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
                 ScrollSyncManager.shared.isUserEditing = false  // NUEVO: Re-habilitar scroll sync
             }
             editingTimer = workItem
-            // Wait 1.0 seconds after last keystroke before enabling scroll sync again
-            // Aumentado de 0.5s a 1.0s para dar más tiempo
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+            // Wait 0.3 seconds after last keystroke before enabling scroll sync again
+            // Reducido de 1.0s a 0.3s para sincronización más rápida al terminar de escribir
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: workItem)
 
             // Autocompletado Markdown
             handleMarkdownAutocompletion(in: textView)
