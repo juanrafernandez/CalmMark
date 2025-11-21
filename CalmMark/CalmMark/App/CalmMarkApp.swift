@@ -9,16 +9,34 @@
 import SwiftUI
 import AppKit
 
+// MARK: - App Launch States
+
+enum AppLaunchState {
+    case initializing    // Showing splash screen
+    case ready          // Ready to show main content
+}
+
 @main
 struct CalmMarkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var showDocumentMode = false
+    @State private var launchState: AppLaunchState = .initializing
 
     var body: some Scene {
         // Main Project/Folder mode
         WindowGroup("CalmMark") {
-            ProjectContentView()
-                .environmentObject(appDelegate.tabManagerBridge)
+            Group {
+                switch launchState {
+                case .initializing:
+                    SplashScreenView()
+                        .onAppear {
+                            initializeApp()
+                        }
+                case .ready:
+                    ProjectContentView()
+                        .environmentObject(appDelegate.tabManagerBridge)
+                }
+            }
         }
         .commands {
             CalmMarkCommands()
@@ -37,6 +55,21 @@ struct CalmMarkApp: App {
             PreferencesView()
         }
         #endif
+    }
+
+    // MARK: - App Initialization
+
+    private func initializeApp() {
+        LogManager.shared.log(.info, "App initialization started", context: "CalmMarkApp")
+
+        // Simulate checking for preloaded content
+        // This could check UserDefaults, bookmarks, etc.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeInOut(duration: 0.5)) {
+                launchState = .ready
+                LogManager.shared.log(.success, "App initialization completed", context: "CalmMarkApp")
+            }
+        }
     }
 }
 
