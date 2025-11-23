@@ -15,7 +15,7 @@ struct ProjectContentView: View {
     @EnvironmentObject var tabManagerBridge: TabManagerBridge
 
     @State private var viewMode: ViewMode = AppSettings.shared.defaultViewMode
-    @State private var showSidebar: Bool = true
+    @State private var showSidebar: Bool = false  // Oculto por defecto
     @State private var sidebarWidth: CGFloat = 250
     @State private var showPreviewPanel: Bool = false  // Starts hidden, auto-shows when first file opens
     @State private var previewPanelWidth: CGFloat = 350
@@ -392,6 +392,8 @@ struct WelcomeView: View {
     let onOpenFolder: () -> Void
     let onCreateCommand: () -> Void
 
+    @State private var isDragTargeted: Bool = false
+
     var body: some View {
         VStack(spacing: 32) {
             // Logo/Icon
@@ -473,7 +475,21 @@ struct WelcomeView: View {
             .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(NSColor.textBackgroundColor))
+        .background(
+            isDragTargeted
+                ? Color.accentColor.opacity(0.1)
+                : Color(NSColor.textBackgroundColor)
+        )
+        .overlay(
+            isDragTargeted
+                ? RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.accentColor, lineWidth: 2)
+                    .padding(20)
+                : nil
+        )
+        .onDrop(of: [.fileURL], isTargeted: $isDragTargeted) { providers in
+            handleDrop(providers: providers)
+        }
     }
 
     private func tipRow(icon: String, text: String) -> some View {
@@ -498,6 +514,57 @@ struct WelcomeView: View {
                 fileManager.setRootFolder(url.deletingLastPathComponent())
             }
         }
+    }
+
+    private func handleDrop(providers: [NSItemProvider]) -> Bool {
+        // Only process the first item
+        guard let provider = providers.first else {
+            return false
+        }
+
+        // Check if it's a file URL
+        if provider.hasItemConformingToTypeIdentifier("public.file-url") {
+            provider.loadItem(forTypeIdentifier: "public.file-url", options: nil) { (urlData, error) in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        LogManager.shared.log(.error, "Failed to load dropped file: \(error.localizedDescription)", context: "WelcomeView")
+                        return
+                    }
+
+                    guard let urlData = urlData as? Data,
+                          let url = URL(dataRepresentation: urlData, relativeTo: nil) else {
+                        LogManager.shared.log(.error, "Invalid URL data from dropped file", context: "WelcomeView")
+                        return
+                    }
+
+                    // Validate that it's a .md file
+                    if url.pathExtension.lowercased() != "md" {
+                        // Show error alert for unsupported format
+                        let alert = NSAlert()
+                        alert.messageText = "Unsupported File Format"
+                        alert.informativeText = "CalmMark only supports Markdown (.md) files.\n\nThe file '\(url.lastPathComponent)' has the extension '.\(url.pathExtension)' which is not supported."
+                        alert.alertStyle = .warning
+                        alert.addButton(withTitle: "OK")
+                        alert.icon = NSImage(systemSymbolName: "doc.badge.exclamationmark", accessibilityDescription: "Unsupported file")
+                        alert.runModal()
+
+                        LogManager.shared.log(.warning, "Dropped file rejected in WelcomeView: '\(url.lastPathComponent)' (extension: .\(url.pathExtension))", context: "WelcomeView")
+                        return
+                    }
+
+                    // Valid .md file - post notification to open it
+                    NotificationCenter.default.post(
+                        name: .openDroppedFile,
+                        object: url
+                    )
+
+                    LogManager.shared.log(.success, "Dropped file accepted in WelcomeView: '\(url.lastPathComponent)'", context: "WelcomeView")
+                }
+            }
+            return true
+        }
+
+        return false
     }
 }
 
