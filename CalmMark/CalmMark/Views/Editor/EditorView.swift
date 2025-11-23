@@ -158,6 +158,7 @@ struct MarkdownTextEditor: NSViewRepresentable {
         weak var scrollView: NSScrollView?
         var isSyncing = false
         var isEditing = false  // NEW: Track if user is actively typing
+        var isApplyingFormat = false  // NEW: Track if applying markdown format to prevent autocompletion interference
         var lastSyncedPercentage: Double = 0.0
         var lastSyncedLine: Int = 0
         private var syncTimer: DispatchWorkItem?
@@ -431,6 +432,9 @@ struct MarkdownTextEditor: NSViewRepresentable {
 
         // MARK: - Autocompletado de Markdown
         private func handleMarkdownAutocompletion(in textView: NSTextView) {
+            // Don't autocomplete if we're applying format programmatically
+            guard !isApplyingFormat else { return }
+
             let selectedRange = textView.selectedRange()
             guard selectedRange.location > 0 else { return }
 

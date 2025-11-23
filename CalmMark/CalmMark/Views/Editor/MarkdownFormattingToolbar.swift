@@ -478,11 +478,23 @@ extension NSTextView {
         print("📝 [MarkdownFormat] Replacement text: '\(replacement)'")
         print("📝 [MarkdownFormat] New selection range: \(newSelectionRange)")
 
+        // Set flag to prevent autocompletion interference
+        if let coordinator = self.delegate as? MarkdownTextEditor.Coordinator {
+            coordinator.isApplyingFormat = true
+        }
+
         textStorage.replaceCharacters(in: rangeToReplace, with: replacement)
         self.setSelectedRange(newSelectionRange)
 
         // Trigger text change notification to update bindings
         self.didChangeText()
+
+        // Reset flag after a brief delay to ensure all change handlers have completed
+        DispatchQueue.main.async {
+            if let coordinator = self.delegate as? MarkdownTextEditor.Coordinator {
+                coordinator.isApplyingFormat = false
+            }
+        }
 
         print("📝 [MarkdownFormat] ✅ Format applied successfully")
     }
