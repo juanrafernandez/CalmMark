@@ -508,7 +508,7 @@ struct PreviewPanelView: View {
     @ObservedObject var settings: AppSettings
     var onClose: () -> Void
 
-    @State private var showOutline: Bool = true
+    @State private var showOutline: Bool = false
     @State private var outlineWidth: CGFloat = 200
     @State private var headings: [HeadingItem] = []
     @State private var statistics: DocumentStatistics? = nil

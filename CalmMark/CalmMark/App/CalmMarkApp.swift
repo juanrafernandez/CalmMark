@@ -132,6 +132,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     func applicationDidFinishLaunching(_ notification: Notification) {
         LogManager.shared.log(.info, "Application did finish launching", context: "AppDelegate")
 
+        // Maximizar la ventana al inicio
+        DispatchQueue.main.async {
+            if let window = NSApp.windows.first {
+                window.setFrame(NSScreen.main?.visibleFrame ?? window.frame, display: true, animate: false)
+                LogManager.shared.log(.info, "Window maximized on launch", context: "AppDelegate")
+            }
+        }
+
         // Configurar window delegate después de un pequeño delay para que la ventana esté lista
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self = self else { return }

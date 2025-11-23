@@ -185,6 +185,10 @@ extension NSTextView {
         let selectedText = (self.string as NSString).substring(with: selectedRange)
         let fullText = self.string as NSString
 
+        print("📝 [MarkdownFormat] Applying format: \(format)")
+        print("📝 [MarkdownFormat] Selected range: \(selectedRange)")
+        print("📝 [MarkdownFormat] Selected text: '\(selectedText)'")
+
         var replacement = ""
         var newSelectionRange = selectedRange
         var rangeToReplace = selectedRange
@@ -317,22 +321,124 @@ extension NSTextView {
 
         case .unorderedList:
             let lines = selectedText.isEmpty ? ["item"] : selectedText.components(separatedBy: .newlines)
-            replacement = lines.map { "- \($0)" }.joined(separator: "\n")
+
+            // Verificar si todas las líneas ya tienen el prefijo "- "
+            let allHaveListPrefix = !lines.isEmpty && lines.allSatisfy { line in
+                line.hasPrefix("- ") || line.hasPrefix("-") || line.isEmpty
+            }
+
+            print("📝 [UnorderedList] Lines: \(lines)")
+            print("📝 [UnorderedList] All have list prefix: \(allHaveListPrefix)")
+
+            if allHaveListPrefix && !selectedText.isEmpty {
+                // Toggle OFF: Quitar el prefijo "- " de cada línea
+                replacement = lines.map { line in
+                    if line.hasPrefix("- ") {
+                        return String(line.dropFirst(2))
+                    } else if line.hasPrefix("-") {
+                        return String(line.dropFirst(1))
+                    } else {
+                        return line
+                    }
+                }.joined(separator: "\n")
+                print("📝 [UnorderedList] Toggle OFF - Replacement: '\(replacement)'")
+            } else {
+                // Toggle ON: Agregar "- " a cada línea
+                replacement = lines.map { "- \($0)" }.joined(separator: "\n")
+                print("📝 [UnorderedList] Toggle ON - Replacement: '\(replacement)'")
+            }
+
             newSelectionRange = NSRange(location: selectedRange.location, length: replacement.count)
 
         case .orderedList:
             let lines = selectedText.isEmpty ? ["item"] : selectedText.components(separatedBy: .newlines)
-            replacement = lines.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+
+            // Verificar si todas las líneas ya tienen el formato de lista ordenada (número seguido de ". ")
+            let allHaveOrderedPrefix = !lines.isEmpty && lines.allSatisfy { line in
+                line.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil || line.isEmpty
+            }
+
+            print("📝 [OrderedList] Lines: \(lines)")
+            print("📝 [OrderedList] All have ordered prefix: \(allHaveOrderedPrefix)")
+
+            if allHaveOrderedPrefix && !selectedText.isEmpty {
+                // Toggle OFF: Quitar el prefijo numérico de cada línea
+                replacement = lines.map { line in
+                    if let range = line.range(of: #"^\d+\.\s"#, options: .regularExpression) {
+                        return String(line[range.upperBound...])
+                    } else {
+                        return line
+                    }
+                }.joined(separator: "\n")
+                print("📝 [OrderedList] Toggle OFF - Replacement: '\(replacement)'")
+            } else {
+                // Toggle ON: Agregar números a cada línea
+                replacement = lines.enumerated().map { "\($0.offset + 1). \($0.element)" }.joined(separator: "\n")
+                print("📝 [OrderedList] Toggle ON - Replacement: '\(replacement)'")
+            }
+
             newSelectionRange = NSRange(location: selectedRange.location, length: replacement.count)
 
         case .taskList:
             let lines = selectedText.isEmpty ? ["tarea"] : selectedText.components(separatedBy: .newlines)
-            replacement = lines.map { "- [ ] \($0)" }.joined(separator: "\n")
+
+            // Verificar si todas las líneas ya tienen el formato de task list
+            let allHaveTaskPrefix = !lines.isEmpty && lines.allSatisfy { line in
+                line.hasPrefix("- [ ] ") || line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") || line.isEmpty
+            }
+
+            print("📝 [TaskList] Lines: \(lines)")
+            print("📝 [TaskList] All have task prefix: \(allHaveTaskPrefix)")
+
+            if allHaveTaskPrefix && !selectedText.isEmpty {
+                // Toggle OFF: Quitar el prefijo de task list
+                replacement = lines.map { line in
+                    if line.hasPrefix("- [ ] ") {
+                        return String(line.dropFirst(6))
+                    } else if line.hasPrefix("- [x] ") || line.hasPrefix("- [X] ") {
+                        return String(line.dropFirst(6))
+                    } else {
+                        return line
+                    }
+                }.joined(separator: "\n")
+                print("📝 [TaskList] Toggle OFF - Replacement: '\(replacement)'")
+            } else {
+                // Toggle ON: Agregar "- [ ] " a cada línea
+                replacement = lines.map { "- [ ] \($0)" }.joined(separator: "\n")
+                print("📝 [TaskList] Toggle ON - Replacement: '\(replacement)'")
+            }
+
             newSelectionRange = NSRange(location: selectedRange.location, length: replacement.count)
 
         case .blockquote:
             let lines = selectedText.isEmpty ? ["cita"] : selectedText.components(separatedBy: .newlines)
-            replacement = lines.map { "> \($0)" }.joined(separator: "\n")
+
+            // Verificar si todas las líneas ya tienen el prefijo "> "
+            let allHaveQuotePrefix = !lines.isEmpty && lines.allSatisfy { line in
+                line.hasPrefix("> ") || line.hasPrefix(">") || line.isEmpty
+            }
+
+            print("📝 [Blockquote] Lines: \(lines)")
+            print("📝 [Blockquote] All have quote prefix: \(allHaveQuotePrefix)")
+
+            if allHaveQuotePrefix && !selectedText.isEmpty {
+                // Toggle OFF: Quitar el prefijo "> " de cada línea
+                replacement = lines.map { line in
+                    if line.hasPrefix("> ") {
+                        return String(line.dropFirst(2))
+                    } else if line.hasPrefix(">") {
+                        return String(line.dropFirst(1))
+                    } else {
+                        return line
+                    }
+                }.joined(separator: "\n")
+                print("📝 [Blockquote] Toggle OFF - Replacement: '\(replacement)'")
+            } else {
+                // Toggle ON: Agregar "> " a cada línea
+                replacement = lines.map { "> \($0)" }.joined(separator: "\n")
+                print("📝 [Blockquote] Toggle ON - Replacement: '\(replacement)'")
+            }
+
             newSelectionRange = NSRange(location: selectedRange.location, length: replacement.count)
 
         case .link:
@@ -368,10 +474,16 @@ extension NSTextView {
         }
 
         // Apply the replacement
+        print("📝 [MarkdownFormat] Range to replace: \(rangeToReplace)")
+        print("📝 [MarkdownFormat] Replacement text: '\(replacement)'")
+        print("📝 [MarkdownFormat] New selection range: \(newSelectionRange)")
+
         textStorage.replaceCharacters(in: rangeToReplace, with: replacement)
         self.setSelectedRange(newSelectionRange)
 
         // Trigger text change notification to update bindings
         self.didChangeText()
+
+        print("📝 [MarkdownFormat] ✅ Format applied successfully")
     }
 }
