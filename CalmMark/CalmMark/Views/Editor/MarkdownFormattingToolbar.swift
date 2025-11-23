@@ -15,6 +15,10 @@ struct MarkdownFormattingToolbar: View {
         HStack(spacing: 2) {
             // Headers
             Menu {
+                Button("Normal") {
+                    onFormat(.paragraph)
+                }
+                Divider()
                 ForEach(1...6, id: \.self) { level in
                     Button("Header \(level)") {
                         onFormat(.header(level))
@@ -161,6 +165,7 @@ struct MarkdownFormattingToolbar: View {
 
 enum MarkdownFormat {
     case header(Int)
+    case paragraph // Para quitar formato de header
     case bold
     case italic
     case strikethrough
@@ -195,9 +200,52 @@ extension NSTextView {
 
         switch format {
         case .header(let level):
+            // Detectar si el texto ya tiene un header al inicio
+            let headerPattern = "^#{1,6}\\s+"
+            let regex = try? NSRegularExpression(pattern: headerPattern, options: [])
+            let range = NSRange(location: 0, length: selectedText.count)
+
+            var textWithoutHeader = selectedText
+            var headerLength = 0
+
+            if let match = regex?.firstMatch(in: selectedText, options: [], range: range) {
+                // Hay un header existente, quitarlo
+                headerLength = match.range.length
+                textWithoutHeader = (selectedText as NSString).substring(from: headerLength)
+                print("📝 [Header] Detected existing header of length \(headerLength)")
+                print("📝 [Header] Text without header: '\(textWithoutHeader)'")
+            }
+
+            // Aplicar el nuevo header
             let prefix = String(repeating: "#", count: level) + " "
-            replacement = prefix + selectedText
-            newSelectionRange = NSRange(location: selectedRange.location + prefix.count, length: selectedText.count)
+            replacement = prefix + textWithoutHeader
+
+            // Ajustar el rango de reemplazo para incluir el header anterior si existía
+            if headerLength > 0 {
+                rangeToReplace = selectedRange
+            }
+
+            newSelectionRange = NSRange(location: selectedRange.location + prefix.count, length: textWithoutHeader.count)
+            print("📝 [Header] Applied header level \(level)")
+
+        case .paragraph:
+            // Quitar cualquier header existente
+            let headerPattern = "^#{1,6}\\s+"
+            let regex = try? NSRegularExpression(pattern: headerPattern, options: [])
+            let range = NSRange(location: 0, length: selectedText.count)
+
+            if let match = regex?.firstMatch(in: selectedText, options: [], range: range) {
+                // Hay un header existente, quitarlo
+                let headerLength = match.range.length
+                replacement = (selectedText as NSString).substring(from: headerLength)
+                print("📝 [Paragraph] Removed header of length \(headerLength)")
+            } else {
+                // No hay header, dejar el texto como está
+                replacement = selectedText
+                print("📝 [Paragraph] No header found, text unchanged")
+            }
+
+            newSelectionRange = NSRange(location: selectedRange.location, length: replacement.count)
 
         case .bold:
             if selectedText.isEmpty {
