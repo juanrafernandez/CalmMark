@@ -13,8 +13,7 @@ import AppKit
 
 enum AppLaunchState {
     case loading        // Initial loading screen (always shown)
-    case initializing   // Splash screen with drag & drop (no content)
-    case ready          // Ready to show main content (content exists)
+    case ready          // Ready to show main content
 }
 
 @main
@@ -40,8 +39,6 @@ struct CalmMarkApp: App {
                         .onAppear {
                             checkInitialState()
                         }
-                case .initializing:
-                    SplashScreenView()
                 case .ready:
                     ProjectContentView()
                         .environmentObject(appDelegate.tabManagerBridge)
@@ -75,30 +72,16 @@ struct CalmMarkApp: App {
         // Verificar si hay contenido precargado
         let hasContent = Self.checkForPreloadedContent()
 
-        if hasContent {
-            // SI HAY CONTENIDO: Mostrar loading screen mientras se prepara
-            // Dar tiempo suficiente para que ProjectContentView cargue el contenido
-            let loadingDuration: Double = 0.6
+        // Siempre ir a ProjectContentView después del loading
+        // ProjectContentView maneja el caso sin contenido mostrando WelcomeView
+        let loadingDuration: Double = hasContent ? 0.6 : 0.4
 
-            LogManager.shared.log(.info, "Content found, showing loading screen while preparing...", context: "CalmMarkApp.checkInitialState")
+        LogManager.shared.log(.info, "Content preloaded: \(hasContent). Will transition to ready state...", context: "CalmMarkApp.checkInitialState")
 
-            DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    self.launchState = .ready
-                    LogManager.shared.log(.success, "Transitioning to ready state with content", context: "CalmMarkApp.checkInitialState")
-                }
-            }
-        } else {
-            // SI NO HAY CONTENIDO: Mostrar loading brevemente, luego splash screen
-            let loadingDuration: Double = 0.5
-
-            LogManager.shared.log(.info, "No content found, will show splash screen", context: "CalmMarkApp.checkInitialState")
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
-                withAnimation(.easeInOut(duration: 0.4)) {
-                    self.launchState = .initializing
-                    LogManager.shared.log(.info, "Transitioning to initializing state (splash screen)", context: "CalmMarkApp.checkInitialState")
-                }
+        DispatchQueue.main.asyncAfter(deadline: .now() + loadingDuration) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                self.launchState = .ready
+                LogManager.shared.log(.success, "Transitioning to ready state", context: "CalmMarkApp.checkInitialState")
             }
         }
     }
