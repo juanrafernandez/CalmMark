@@ -315,8 +315,24 @@ extension NSTextView {
                 replacement = "```\ncódigo\n```"
                 newSelectionRange = NSRange(location: selectedRange.location + 4, length: 6)
             } else {
-                replacement = "```\n\(selectedText)\n```"
-                newSelectionRange = NSRange(location: selectedRange.location + 4, length: selectedText.count)
+                // Verificar si hay ```\n ANTES y \n``` DESPUÉS de la selección
+                let beforeStart = max(0, selectedRange.location - 4)
+
+                let hasCodeBlockBefore = selectedRange.location >= 4 &&
+                                        fullText.substring(with: NSRange(location: beforeStart, length: 4)) == "```\n"
+                let hasCodeBlockAfter = (selectedRange.location + selectedRange.length + 4) <= fullText.length &&
+                                       fullText.substring(with: NSRange(location: selectedRange.location + selectedRange.length, length: 4)) == "\n```"
+
+                if hasCodeBlockBefore && hasCodeBlockAfter {
+                    // Toggle OFF: Quitar los ``` alrededor
+                    replacement = selectedText
+                    rangeToReplace = NSRange(location: beforeStart, length: selectedRange.length + 8)
+                    newSelectionRange = NSRange(location: beforeStart, length: selectedText.count)
+                } else {
+                    // Toggle ON: Agregar ```
+                    replacement = "```\n\(selectedText)\n```"
+                    newSelectionRange = NSRange(location: selectedRange.location + 4, length: selectedText.count)
+                }
             }
 
         case .unorderedList:
